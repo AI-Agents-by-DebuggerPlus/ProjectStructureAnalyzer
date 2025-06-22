@@ -17,19 +17,28 @@
             <TextBox x:Name="PathTextBox" Width="400" Margin="5" Text="{Binding SelectedPath, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <Button x:Name="SelectFolderButton" Content="Выбрать папку" Click="SelectFolderButton_Click" Margin="5" Padding="5"/>
             <Button x:Name="AnalyzeButton" Content="Анализировать" Click="AnalyzeButton_Click" Margin="5" Padding="5"
-                    IsEnabled="{Binding ElementName=PathTextBox, Path=Text, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=HasText}" />
+                    IsEnabled="{Binding ElementName=PathTextBox, Path=Text.Length, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=GreaterThanZero}" />
         </StackPanel>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="250"/>
+                <!-- Фиксированный размер для TreeView -->
                 <ColumnDefinition Width="3*"/>
             </Grid.ColumnDefinitions>
             <TreeView x:Name="ProjectTreeView" Margin="5" SelectedItemChanged="TreeViewItem_Selected">
                 <TreeView.ItemContainerStyle>
                     <Style TargetType="TreeViewItem">
+                        <Setter Property="ToolTip" Value="{Binding FullPath}" />
+                        <!-- Подсказка с полным путем -->
                         <EventSetter Event="Selected" Handler="TreeViewItem_Selected"/>
                     </Style>
                 </TreeView.ItemContainerStyle>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding Name}" />
+                        <!-- Только имя проекта -->
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
             </TreeView>
             <ScrollViewer x:Name="VisualizationScrollViewer" Grid.Column="1" Margin="5" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MouseWheel="VisualizationScrollViewer_MouseWheel">
                 <Canvas x:Name="VisualizationCanvas" />

@@ -309,7 +309,7 @@ namespace ProjectStructureAnalyzer
         {
             if (e.OriginalSource is TreeViewItem treeViewItem && treeViewItem.DataContext is ProjectItem selectedItem)
             {
-                StatusText.Text = $"Выбран: {selectedItem.FullPath}";
+                StatusText.Text = $"Выбран: {selectedItem.Name}"; // Только имя
             }
         }
 
