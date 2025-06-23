@@ -5,9 +5,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using System.Threading.Tasks;
@@ -89,13 +86,11 @@ namespace ProjectStructureAnalyzer
             {
                 StatusText.Text = "Анализ структуры проекта...";
                 projectItems.Clear();
-                VisualizationCanvas.Children.Clear();
 
                 var rootItem = await AnalyzeDirectoryAsync(SelectedPath);
                 if (rootItem != null)
                 {
                     projectItems.Add(rootItem);
-                    CreateVisualization(rootItem);
                     UpdateStatistics();
                     ExportButton.IsEnabled = true;
                     StatusText.Text = "Анализ завершен успешно.";
@@ -178,96 +173,6 @@ namespace ProjectStructureAnalyzer
                 count += CountFiles(child);
             }
             return count;
-        }
-
-        private void CreateVisualization(ProjectItem rootItem)
-        {
-            VisualizationCanvas.Children.Clear();
-
-            var startX = 50;
-            var startY = 50;
-            var levelHeight = 30;
-
-            DrawProjectStructure(rootItem, startX, startY, 0, levelHeight);
-        }
-
-        private double DrawProjectStructure(ProjectItem item, double x, double y, int level, double levelHeight)
-        {
-            var nodeWidth = 150;
-            var nodeHeight = 20;
-            var spacing = 20;
-
-            // Иконка для папки или файла
-            string iconPath = item.IsDirectory ? "/Images/folder.png" : "/Images/file.png";
-            var image = new Image
-            {
-                Width = 16,
-                Height = 16,
-                Source = LoadImage(iconPath)
-            };
-            Canvas.SetLeft(image, x);
-            Canvas.SetTop(image, y);
-            VisualizationCanvas.Children.Add(image);
-
-            var text = new TextBlock
-            {
-                Text = item.Name,
-                FontSize = 12,
-                Margin = new Thickness(20, 0, 0, 0)
-            };
-            Canvas.SetLeft(text, x);
-            Canvas.SetTop(text, y - 5);
-            VisualizationCanvas.Children.Add(text);
-
-            var currentX = x;
-            var childY = y + levelHeight;
-
-            if (item.IsDirectory && item.Children.Count > 0)
-            {
-                var verticalLine = new Line
-                {
-                    X1 = x + 8,
-                    Y1 = y + nodeHeight,
-                    X2 = x + 8,
-                    Y2 = childY + (item.Children.Count * levelHeight) - 5,
-                    Stroke = Brushes.LightGray,
-                    StrokeThickness = 1
-                };
-                VisualizationCanvas.Children.Add(verticalLine);
-
-                foreach (var child in item.Children)
-                {
-                    var horizontalLine = new Line
-                    {
-                        X1 = x + 8,
-                        Y1 = childY - 5,
-                        X2 = currentX + 8,
-                        Y2 = childY - 5,
-                        Stroke = Brushes.LightGray,
-                        StrokeThickness = 1
-                    };
-                    VisualizationCanvas.Children.Add(horizontalLine);
-
-                    DrawProjectStructure(child, currentX + 20, childY, level + 1, levelHeight);
-                    currentX += nodeWidth + spacing;
-                    childY += levelHeight;
-                }
-            }
-
-            return Math.Max(currentX, x + nodeWidth);
-        }
-
-        private BitmapImage LoadImage(string path)
-        {
-            try
-            {
-                return new BitmapImage(new Uri(path, UriKind.Relative));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка загрузки изображения {path}: {ex.Message}");
-                return new BitmapImage();
-            }
         }
 
         private string FormatFileSize(long bytes)
@@ -362,16 +267,7 @@ namespace ProjectStructureAnalyzer
 
         private void VisualizationScrollViewer_MouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (Keyboard.Modifiers == ModifierKeys.Control)
-            {
-                e.Handled = true;
-                var scaleTransform = VisualizationCanvas.RenderTransform as ScaleTransform ?? new ScaleTransform();
-                var scale = scaleTransform.ScaleX;
-                scale += e.Delta > 0 ? 0.1 : -0.1;
-                scale = Math.Max(0.1, Math.Min(2.0, scale));
-                scaleTransform.ScaleX = scale;
-                scaleTransform.ScaleY = scale;
-            }
+            // Метод больше не нужен, так как VisualizationScrollViewer удален
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)

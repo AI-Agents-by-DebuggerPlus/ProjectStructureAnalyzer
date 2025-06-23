@@ -28,30 +28,20 @@
                     IsEnabled="{Binding SelectedPath, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=GreaterThanZero}" />
             <Button x:Name="SettingsButton" Content="Настройки" Click="SettingsButton_Click" Margin="5" Padding="5"/>
         </StackPanel>
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="250"/>
-                <!-- Фиксированный размер для TreeView -->
-                <ColumnDefinition Width="3*"/>
-            </Grid.ColumnDefinitions>
-            <TreeView x:Name="ProjectTreeView" Margin="5" ItemContainerStyle="{StaticResource TreeViewItemStyle}" SelectedItemChanged="TreeViewItem_Selected">
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                        <StackPanel Orientation="Horizontal">
-                            <Image Width="16" Height="16" Margin="0,0,5,0">
-                                <Image.Source>
-                                    <Binding Path="IsDirectory" Converter="{StaticResource BooleanToImageConverter}" />
-                                </Image.Source>
-                            </Image>
-                            <TextBlock Text="{Binding Name}" />
-                        </StackPanel>
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
-            <ScrollViewer x:Name="VisualizationScrollViewer" Grid.Column="1" Margin="5" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MouseWheel="VisualizationScrollViewer_MouseWheel">
-                <Canvas x:Name="VisualizationCanvas" />
-            </ScrollViewer>
-        </Grid>
+        <TreeView x:Name="ProjectTreeView" Grid.Row="1" Margin="5" ItemContainerStyle="{StaticResource TreeViewItemStyle}" SelectedItemChanged="TreeViewItem_Selected">
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Width="16" Height="16" Margin="0,0,5,0">
+                            <Image.Source>
+                                <Binding Path="IsDirectory" Converter="{StaticResource BooleanToImageConverter}" />
+                            </Image.Source>
+                        </Image>
+                        <TextBlock Text="{Binding Name}" />
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="5">
             <TextBlock Text="Файлов: " Margin="5"/>
             <TextBlock x:Name="FileCountText" Margin="5"/>
