@@ -5,6 +5,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media; // Добавлена для SolidColorBrush и Colors
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using System.Threading.Tasks;
@@ -218,11 +219,18 @@ namespace ProjectStructureAnalyzer
 
         private void ExportButton_Click(object sender, RoutedEventArgs e)
         {
+            if (projectItems.Count == 0 || string.IsNullOrEmpty(SelectedPath))
+            {
+                MessageBox.Show("Сначала выполните анализ проекта.");
+                return;
+            }
+
+            var projectName = new DirectoryInfo(SelectedPath).Name; // Используем имя корневой папки как название проекта
             var saveDialog = new SaveFileDialog
             {
                 Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
                 DefaultExt = "txt",
-                FileName = "project_structure.txt"
+                FileName = $"{projectName}_structure.txt" // Название файла соответствует проекту
             };
 
             if (saveDialog.ShowDialog() == true)
@@ -241,12 +249,18 @@ namespace ProjectStructureAnalyzer
                         }
                     }
 
-                    MessageBox.Show("Структура проекта успешно экспортирована!");
+                    // Подсвечиваем сообщение о сохранении
+                    ExportStatusText.Text = $"Файл структуры сохранен: {saveDialog.FileName}";
+                    ExportStatusText.Visibility = Visibility.Visible;
+                    ExportStatusText.Foreground = new SolidColorBrush(Colors.Green);
                     StatusText.Text = "Экспорт завершен успешно.";
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Ошибка при экспорте: {ex.Message}");
+                    ExportStatusText.Text = $"Ошибка экспорта: {ex.Message}";
+                    ExportStatusText.Foreground = new SolidColorBrush(Colors.Red);
+                    ExportStatusText.Visibility = Visibility.Visible;
                 }
             }
         }
@@ -263,11 +277,6 @@ namespace ProjectStructureAnalyzer
             {
                 ExportProjectStructure(writer, child, level + 1);
             }
-        }
-
-        private void VisualizationScrollViewer_MouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            // Метод больше не нужен, так как VisualizationScrollViewer удален
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)

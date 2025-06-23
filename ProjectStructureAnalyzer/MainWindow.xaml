@@ -20,6 +20,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <!-- Добавлена строка для статуса сохранения -->
         </Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Margin="5">
             <TextBox x:Name="PathTextBox" Width="400" Margin="5" Text="{Binding SelectedPath, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -50,5 +52,7 @@
             <Button x:Name="ExportButton" Content="Экспортировать" Click="ExportButton_Click" Margin="5" Padding="5" IsEnabled="False"/>
             <TextBlock x:Name="StatusText" Margin="5"/>
         </StackPanel>
+        <TextBlock x:Name="ExportStatusText" Grid.Row="3" Margin="5" Foreground="Green" Visibility="Collapsed"/>
+        <!-- Новый элемент для статуса -->
     </Grid>
 </Window>
