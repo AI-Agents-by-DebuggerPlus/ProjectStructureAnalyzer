@@ -34,5 +34,29 @@ namespace ProjectStructureAnalyzer.Properties {
                 this["LastSelectedPath"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string FolderFilters {
+            get {
+                return ((string)(this["FolderFilters"]));
+            }
+            set {
+                this["FolderFilters"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string FileFilters {
+            get {
+                return ((string)(this["FileFilters"]));
+            }
+            set {
+                this["FileFilters"] = value;
+            }
+        }
     }
 }

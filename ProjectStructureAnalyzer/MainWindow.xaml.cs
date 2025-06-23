@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
@@ -13,10 +15,12 @@ using System.Linq;
 
 namespace ProjectStructureAnalyzer
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
         private readonly ObservableCollection<ProjectItem> projectItems;
         private string selectedPath;
+
+        public event PropertyChangedEventHandler PropertyChanged;
 
         public MainWindow()
         {
@@ -25,13 +29,38 @@ namespace ProjectStructureAnalyzer
             ProjectTreeView.ItemsSource = projectItems;
 
             // Загрузка последней выбранной директории
-            selectedPath = Properties.Settings.Default.LastSelectedPath;
-            if (!string.IsNullOrEmpty(selectedPath) && Directory.Exists(selectedPath))
+            SelectedPath = Properties.Settings.Default.LastSelectedPath;
+            if (!string.IsNullOrEmpty(SelectedPath) && Directory.Exists(SelectedPath))
             {
-                PathTextBox.Text = selectedPath;
                 AnalyzeButton.IsEnabled = true;
                 StatusText.Text = "Последняя папка загружена. Нажмите 'Анализировать'.";
             }
+            else
+            {
+                SelectedPath = "";
+                AnalyzeButton.IsEnabled = false;
+                StatusText.Text = "Выберите папку для анализа.";
+            }
+
+            DataContext = this;
+        }
+
+        public string SelectedPath
+        {
+            get => selectedPath;
+            set
+            {
+                if (selectedPath != value)
+                {
+                    selectedPath = value;
+                    OnPropertyChanged(nameof(SelectedPath));
+                }
+            }
+        }
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private void SelectFolderButton_Click(object sender, RoutedEventArgs e)
@@ -39,20 +68,18 @@ namespace ProjectStructureAnalyzer
             var dialog = new Forms.FolderBrowserDialog();
             if (dialog.ShowDialog() == Forms.DialogResult.OK)
             {
-                selectedPath = dialog.SelectedPath;
-                PathTextBox.Text = selectedPath;
+                SelectedPath = dialog.SelectedPath;
                 AnalyzeButton.IsEnabled = true;
                 StatusText.Text = "Папка выбрана. Нажмите 'Анализировать' для начала анализа.";
 
-                // Сохранение последней выбранной директории
-                Properties.Settings.Default.LastSelectedPath = selectedPath;
+                Properties.Settings.Default.LastSelectedPath = SelectedPath;
                 Properties.Settings.Default.Save();
             }
         }
 
         private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(selectedPath) || !Directory.Exists(selectedPath))
+            if (string.IsNullOrEmpty(SelectedPath) || !Directory.Exists(SelectedPath))
             {
                 MessageBox.Show("Выберите корректную папку для анализа.");
                 return;
@@ -64,7 +91,7 @@ namespace ProjectStructureAnalyzer
                 projectItems.Clear();
                 VisualizationCanvas.Children.Clear();
 
-                var rootItem = await AnalyzeDirectoryAsync(selectedPath);
+                var rootItem = await AnalyzeDirectoryAsync(SelectedPath);
                 if (rootItem != null)
                 {
                     projectItems.Add(rootItem);
@@ -89,30 +116,40 @@ namespace ProjectStructureAnalyzer
                 Name = dirInfo.Name,
                 FullPath = path,
                 IsDirectory = true,
-                Children = new ObservableCollection<ProjectItem>()
+                Children = new ObservableCollection<ProjectItem>(),
+                IsUserFolder = !IsSystemFolder(dirInfo.Name)
             };
+
+            var folderFilters = (Properties.Settings.Default.FolderFilters ?? "").Split(',').Select(f => f.Trim()).Where(f => !string.IsNullOrEmpty(f)).ToList();
+            var fileFilters = (Properties.Settings.Default.FileFilters ?? "").Split(',').Select(f => f.Trim().ToLower()).Where(f => !string.IsNullOrEmpty(f)).ToList();
 
             try
             {
                 foreach (var dir in dirInfo.GetDirectories().Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden)))
                 {
-                    var childItem = await AnalyzeDirectoryAsync(dir.FullName);
-                    if (childItem != null)
+                    if (folderFilters.Count == 0 || folderFilters.Contains(dir.Name))
                     {
-                        item.Children.Add(childItem);
+                        var childItem = await AnalyzeDirectoryAsync(dir.FullName);
+                        if (childItem != null)
+                        {
+                            item.Children.Add(childItem);
+                        }
                     }
                 }
 
                 foreach (var file in dirInfo.GetFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden)))
                 {
-                    item.Children.Add(new ProjectItem
+                    if (fileFilters.Count == 0 || fileFilters.Contains(file.Extension.ToLower()))
                     {
-                        Name = file.Name,
-                        FullPath = file.FullName,
-                        IsDirectory = false,
-                        Size = file.Length,
-                        Extension = file.Extension.ToLower()
-                    });
+                        item.Children.Add(new ProjectItem
+                        {
+                            Name = file.Name,
+                            FullPath = file.FullName,
+                            IsDirectory = false,
+                            Size = file.Length,
+                            Extension = file.Extension.ToLower()
+                        });
+                    }
                 }
 
                 item.FileCount = CountFiles(item);
@@ -123,6 +160,12 @@ namespace ProjectStructureAnalyzer
             }
 
             return item;
+        }
+
+        private bool IsSystemFolder(string folderName)
+        {
+            string[] systemFolders = { "bin", "obj", "Debug", "Release", ".vs", "packages" };
+            return systemFolders.Contains(folderName.ToLower());
         }
 
         private int CountFiles(ProjectItem item)
@@ -143,133 +186,88 @@ namespace ProjectStructureAnalyzer
 
             var startX = 50;
             var startY = 50;
-            var levelHeight = 100;
+            var levelHeight = 30;
 
             DrawProjectStructure(rootItem, startX, startY, 0, levelHeight);
         }
 
         private double DrawProjectStructure(ProjectItem item, double x, double y, int level, double levelHeight)
         {
-            var nodeWidth = 120;
-            var nodeHeight = 60;
+            var nodeWidth = 150;
+            var nodeHeight = 20;
             var spacing = 20;
 
-            Brush fillBrush = item.IsDirectory ?
-                new SolidColorBrush(Colors.LightSkyBlue) :
-                new SolidColorBrush(Colors.LightPink);
-
-            var rect = new Rectangle
+            // Иконка для папки или файла
+            string iconPath = item.IsDirectory ? "/Images/folder.png" : "/Images/file.png";
+            var image = new Image
             {
-                Width = nodeWidth,
-                Height = nodeHeight,
-                Fill = fillBrush,
-                Stroke = Brushes.Black,
-                StrokeThickness = 1,
-                RadiusX = 5,
-                RadiusY = 5
+                Width = 16,
+                Height = 16,
+                Source = LoadImage(iconPath)
             };
-
-            Canvas.SetLeft(rect, x);
-            Canvas.SetTop(rect, y);
-            VisualizationCanvas.Children.Add(rect);
+            Canvas.SetLeft(image, x);
+            Canvas.SetTop(image, y);
+            VisualizationCanvas.Children.Add(image);
 
             var text = new TextBlock
             {
-                Text = item.Name.Length > 15 ? item.Name.Substring(0, 12) + "..." : item.Name,
-                FontSize = 10,
-                FontWeight = FontWeights.Bold,
-                TextAlignment = TextAlignment.Center,
-                Width = nodeWidth,
-                TextWrapping = TextWrapping.Wrap
+                Text = item.Name,
+                FontSize = 12,
+                Margin = new Thickness(20, 0, 0, 0)
             };
-
             Canvas.SetLeft(text, x);
-            Canvas.SetTop(text, y + 10);
+            Canvas.SetTop(text, y - 5);
             VisualizationCanvas.Children.Add(text);
-
-            if (item.IsDirectory && item.FileCount > 0)
-            {
-                var countText = new TextBlock
-                {
-                    Text = $"({item.FileCount} файлов)",
-                    FontSize = 8,
-                    Foreground = Brushes.Gray,
-                    TextAlignment = TextAlignment.Center,
-                    Width = nodeWidth
-                };
-                Canvas.SetLeft(countText, x);
-                Canvas.SetTop(countText, y + 35);
-                VisualizationCanvas.Children.Add(countText);
-            }
-            else if (!item.IsDirectory)
-            {
-                var sizeText = new TextBlock
-                {
-                    Text = FormatFileSize(item.Size),
-                    FontSize = 8,
-                    Foreground = Brushes.Gray,
-                    TextAlignment = TextAlignment.Center,
-                    Width = nodeWidth
-                };
-                Canvas.SetLeft(sizeText, x);
-                Canvas.SetTop(sizeText, y + 35);
-                VisualizationCanvas.Children.Add(sizeText);
-            }
 
             var currentX = x;
             var childY = y + levelHeight;
 
             if (item.IsDirectory && item.Children.Count > 0)
             {
-                var childrenToShow = item.Children.Take(10).ToList();
-
-                foreach (var child in childrenToShow)
+                var verticalLine = new Line
                 {
-                    var line = new Line
+                    X1 = x + 8,
+                    Y1 = y + nodeHeight,
+                    X2 = x + 8,
+                    Y2 = childY + (item.Children.Count * levelHeight) - 5,
+                    Stroke = Brushes.LightGray,
+                    StrokeThickness = 1
+                };
+                VisualizationCanvas.Children.Add(verticalLine);
+
+                foreach (var child in item.Children)
+                {
+                    var horizontalLine = new Line
                     {
-                        X1 = x + nodeWidth / 2,
-                        Y1 = y + nodeHeight,
-                        X2 = currentX + nodeWidth / 2,
-                        Y2 = childY,
-                        Stroke = Brushes.Gray,
+                        X1 = x + 8,
+                        Y1 = childY - 5,
+                        X2 = currentX + 8,
+                        Y2 = childY - 5,
+                        Stroke = Brushes.LightGray,
                         StrokeThickness = 1
                     };
-                    VisualizationCanvas.Children.Add(line);
+                    VisualizationCanvas.Children.Add(horizontalLine);
 
-                    DrawProjectStructure(child, currentX, childY, level + 1, levelHeight);
+                    DrawProjectStructure(child, currentX + 20, childY, level + 1, levelHeight);
                     currentX += nodeWidth + spacing;
-                }
-
-                if (item.Children.Count > 10)
-                {
-                    var moreRect = new Rectangle
-                    {
-                        Width = nodeWidth,
-                        Height = nodeHeight / 2,
-                        Fill = Brushes.LightGray,
-                        Stroke = Brushes.Gray,
-                        StrokeThickness = 1,
-                        StrokeDashArray = new DoubleCollection { 5, 5 }
-                    };
-                    Canvas.SetLeft(moreRect, currentX);
-                    Canvas.SetTop(moreRect, childY + 15);
-                    VisualizationCanvas.Children.Add(moreRect);
-
-                    var moreText = new TextBlock
-                    {
-                        Text = $"... еще {item.Children.Count - 10}",
-                        FontSize = 9,
-                        FontStyle = FontStyles.Italic,
-                        TextAlignment = TextAlignment.Center,
-                        Width = nodeWidth
-                    };
-                    Canvas.SetLeft(moreText, currentX);
-                    Canvas.SetTop(moreText, childY + 20);
-                    VisualizationCanvas.Children.Add(moreText);
+                    childY += levelHeight;
                 }
             }
 
             return Math.Max(currentX, x + nodeWidth);
+        }
+
+        private BitmapImage LoadImage(string path)
+        {
+            try
+            {
+                return new BitmapImage(new Uri(path, UriKind.Relative));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка загрузки изображения {path}: {ex.Message}");
+                return new BitmapImage();
+            }
         }
 
         private string FormatFileSize(long bytes)
@@ -296,7 +294,7 @@ namespace ProjectStructureAnalyzer
         {
             if (!item.IsDirectory) return 0;
 
-            int count = 1; // Сама папка
+            int count = 1;
             foreach (var child in item.Children)
             {
                 if (child.IsDirectory)
@@ -309,7 +307,7 @@ namespace ProjectStructureAnalyzer
         {
             if (e.OriginalSource is TreeViewItem treeViewItem && treeViewItem.DataContext is ProjectItem selectedItem)
             {
-                StatusText.Text = $"Выбран: {selectedItem.Name}"; // Только имя
+                StatusText.Text = $"Выбран: {selectedItem.Name}";
             }
         }
 
@@ -328,7 +326,7 @@ namespace ProjectStructureAnalyzer
                 {
                     using (var writer = new StreamWriter(saveDialog.FileName))
                     {
-                        writer.WriteLine($"Структура проекта: {selectedPath}");
+                        writer.WriteLine($"Структура проекта: {SelectedPath}");
                         writer.WriteLine($"Дата анализа: {DateTime.Now}");
                         writer.WriteLine(new string('=', 50));
 
@@ -375,6 +373,12 @@ namespace ProjectStructureAnalyzer
                 scaleTransform.ScaleY = scale;
             }
         }
+
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new SettingsWindow();
+            settingsWindow.ShowDialog();
+        }
     }
 
     public class ProjectItem
@@ -386,5 +390,6 @@ namespace ProjectStructureAnalyzer
         public string Extension { get; set; } = string.Empty;
         public int FileCount { get; set; }
         public ObservableCollection<ProjectItem> Children { get; set; } = new ObservableCollection<ProjectItem>();
+        public bool IsUserFolder { get; set; }
     }
 }
