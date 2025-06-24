@@ -4,13 +4,14 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives; // Добавлено для GeneratorStatus
+using System.Windows.Controls.Primitives; // Для GeneratorStatus
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Windows.Data;
 
 namespace ProjectStructureAnalyzer
 {
@@ -237,7 +238,7 @@ namespace ProjectStructureAnalyzer
                         }
                     }
 
-                    ExportStatusText.Text = $"Файл структуры сохранен: {saveDialog.FileName}";
+                    ExportStatusText.Text = $"Файл структуры сохранен:\n {saveDialog.FileName}";
                     ExportStatusText.Visibility = Visibility.Visible;
                     ExportStatusText.Foreground = new SolidColorBrush(Colors.Green);
                     StatusText.Text = "Экспорт завершен успешно.";
@@ -329,6 +330,47 @@ namespace ProjectStructureAnalyzer
                 }
             }
         }
+
+        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                this.DragMove();
+        }
+
+        private void Minimize_Click(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeRestore_Click(object sender, RoutedEventArgs e)
+        {
+            if (this.WindowState == WindowState.Maximized)
+                this.WindowState = WindowState.Normal;
+            else
+                this.WindowState = WindowState.Maximized;
+        }
+
+        private void Close_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+    }
+
+    // Конвертер для отображения иконок
+    public class DirectoryToIconConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            if (value is bool isDirectory && isDirectory)
+                return "📁";
+            return "📄";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class ProjectItem
@@ -341,5 +383,6 @@ namespace ProjectStructureAnalyzer
         public int FileCount { get; set; }
         public ObservableCollection<ProjectItem> Children { get; set; } = new ObservableCollection<ProjectItem>();
         public bool IsUserFolder { get; set; }
+        public bool IsExpanded { get; set; } // Для управления состоянием развертывания
     }
 }

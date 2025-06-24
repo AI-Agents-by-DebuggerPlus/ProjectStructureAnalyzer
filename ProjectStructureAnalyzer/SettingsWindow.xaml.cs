@@ -117,5 +117,18 @@ namespace ProjectStructureAnalyzer
                 Console.WriteLine($"Log error: {ex.Message}");
             }
         }
+
+        private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
+            {
+                this.DragMove();
+            }
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
     }
 }
