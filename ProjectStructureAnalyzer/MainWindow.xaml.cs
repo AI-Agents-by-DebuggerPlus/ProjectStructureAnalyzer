@@ -6,7 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives; // Для GeneratorStatus
 using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Media; // ДОБАВЛЕНО
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using System.Threading.Tasks;
@@ -27,6 +27,14 @@ namespace ProjectStructureAnalyzer
         public MainWindow()
         {
             InitializeComponent();
+
+            // --- ДОБАВЛЕННЫЙ КОД: Применение сохраненного шрифта ---
+            if (!string.IsNullOrEmpty(Properties.Settings.Default.ApplicationFontFamily))
+            {
+                this.FontFamily = new FontFamily(Properties.Settings.Default.ApplicationFontFamily);
+            }
+            // --- КОНЕЦ ДОБАВЛЕННОГО КОДА ---
+
             // Очистка лог-файла при запуске
             if (File.Exists(logFilePath))
             {

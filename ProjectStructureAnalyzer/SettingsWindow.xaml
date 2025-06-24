@@ -4,14 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Настройки" Height="358" Width="382"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent" WindowStartupLocation="CenterOwner">
+        Width="382"
+        WindowStyle="None" 
+        AllowsTransparency="True" 
+        Background="Transparent" 
+        WindowStartupLocation="CenterOwner"
+        SizeToContent="Height">
 
     <Border Background="{StaticResource WindowBackgroundBrush}"
             BorderBrush="{StaticResource ControlBorderBrush}"
             BorderThickness="1"
             CornerRadius="8">
-
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -25,13 +28,12 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="Настройки" 
+                <TextBlock Text="Настройки"
                            Grid.Column="0"
                            Foreground="{StaticResource TextBrush}" 
                            FontSize="16"
                            Margin="15,0,0,0"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Left"/>
+                           VerticalAlignment="Center"/>
 
                 <Button x:Name="CloseButton" 
                         Grid.Column="1"
@@ -42,20 +44,37 @@
                         VerticalAlignment="Top"/>
             </Grid>
 
-            <StackPanel Grid.Row="1" Margin="15,0,15,10">
-                <TextBlock Text="Исключить из анализа следующие папки и файлы:" FontWeight="Bold" Margin="0,0,0,10"/>
-                <CheckBox x:Name="FolderSrcCheckBox" Content="src" Margin="0,0,0,5"/>
-                <CheckBox x:Name="FolderBinCheckBox" Content="bin" Margin="0,0,0,5"/>
-                <CheckBox x:Name="FolderObjCheckBox" Content="obj" Margin="0,0,0,5"/>
-                <CheckBox x:Name="FolderPropertiesCheckBox" Content="Properties" Margin="0,0,0,5"/>
-                <TextBlock Text="Файлы:" Margin="0,10,0,5" FontWeight="Bold"/>
-                <CheckBox x:Name="FileCsCheckBox" Content=".cs" Margin="0,0,0,5"/>
-                <CheckBox x:Name="FileSlnCheckBox" Content=".sln" Margin="0,0,0,5"/>
-                <CheckBox x:Name="FileCsprojCheckBox" Content=".csproj" Margin="0,0,0,5"/>
-                <CheckBox x:Name="FileConfigCheckBox" Content=".config" Margin="0,0,0,5"/>
-            </StackPanel>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="15,10">
+                    <TextBlock Text="Исключить из анализа следующие папки и файлы:" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <CheckBox x:Name="FolderSrcCheckBox" Content="src" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="FolderBinCheckBox" Content="bin" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="FolderObjCheckBox" Content="obj" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="FolderPropertiesCheckBox" Content="Properties" Margin="0,0,0,5"/>
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,15,15">
+                    <TextBlock Text="Файлы:" Margin="0,10,0,5" FontWeight="Bold"/>
+                    <CheckBox x:Name="FileCsCheckBox" Content=".cs" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="FileSlnCheckBox" Content=".sln" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="FileCsprojCheckBox" Content=".csproj" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="FileConfigCheckBox" Content=".config" Margin="0,0,0,5"/>
+
+                    <TextBlock Text="Шрифт приложения:" Margin="0,15,0,5" FontWeight="Bold"/>
+                    <ComboBox x:Name="FontComboBox" 
+                              Margin="0,0,0,5"
+                              ItemContainerStyle="{StaticResource DarkComboBoxItemStyle}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Source}" 
+                                           FontFamily="{Binding}"
+                                           FontSize="14"
+                                           Foreground="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=ComboBoxItem}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,15,15">
                 <Button x:Name="SaveButton" Content="Сохранить" Click="SaveButton_Click" Width="85" Margin="0,0,10,0"/>
                 <Button x:Name="CancelButton" Content="Отмена" Click="CancelButton_Click" Width="85"/>
             </StackPanel>

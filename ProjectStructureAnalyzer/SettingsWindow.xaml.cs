@@ -1,8 +1,9 @@
 ﻿using System;
-using System.IO; // Для StreamWriter и File
-using System.Linq; // Для Select и Where
+using System.IO;
+using System.Linq;
 using System.Windows;
-using System.Windows.Controls; // Для CheckBox
+using System.Windows.Controls;
+using System.Windows.Media; // ДОБАВЛЕН
 
 namespace ProjectStructureAnalyzer
 {
@@ -31,7 +32,6 @@ namespace ProjectStructureAnalyzer
                 .Where(f => !string.IsNullOrEmpty(f))
                 .ToArray();
 
-            // BREAKPOINT: Проверка загружаемых значений исключений
             FolderSrcCheckBox.IsChecked = folderExclusions.Contains("src");
             FolderBinCheckBox.IsChecked = folderExclusions.Contains("bin");
             FolderObjCheckBox.IsChecked = folderExclusions.Contains("obj");
@@ -43,14 +43,26 @@ namespace ProjectStructureAnalyzer
             FileConfigCheckBox.IsChecked = fileExclusions.Contains(".config");
 
             Log($"Загружены настройки: FolderExclusions={string.Join(",", folderExclusions)}, FileExclusions={string.Join(",", fileExclusions)}");
+
+            // --- ДОБАВЛЕННЫЙ КОД ДЛЯ ЗАГРУЗКИ ШРИФТОВ ---
+            FontComboBox.ItemsSource = Fonts.SystemFontFamilies.OrderBy(f => f.Source);
+            string savedFont = Properties.Settings.Default.ApplicationFontFamily;
+            if (!string.IsNullOrEmpty(savedFont))
+            {
+                FontComboBox.SelectedItem = new FontFamily(savedFont);
+            }
+            if (FontComboBox.SelectedItem == null) // Если шрифт не найден или не был сохранен
+            {
+                FontComboBox.SelectedItem = new FontFamily("Segoe UI");
+            }
+            // --- КОНЕЦ ДОБАВЛЕННОГО КОДА ---
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            Log(""); // Пустая строка для разделения этапов
+            Log("");
             Log("Сохранение и применение настроек");
 
-            // Детальная проверка состояния каждого чекбокса
             bool binChecked = FolderBinCheckBox.IsChecked ?? false;
             bool objChecked = FolderObjCheckBox.IsChecked ?? false;
             Log($"Состояние чекбоксов: FolderBinCheckBox={binChecked}, FolderObjCheckBox={objChecked}");
@@ -70,27 +82,30 @@ namespace ProjectStructureAnalyzer
                     (f == ".config" && FileConfigCheckBox.IsChecked == true))
                 .ToArray();
 
-            // BREAKPOINT: Отслеживание изменения состояния чекбоксов
             Log($"Состояние чекбоксов (после фильтрации): FolderExclusions={string.Join(",", folderExclusions)}, FileExclusions={string.Join(",", fileExclusions)}");
 
-            // Разложение присвоений на промежуточные шаги
-            string folderFilterString = string.Join(",", folderExclusions); // BREAKPOINT: Проверка объединения папок
-            string fileFilterString = string.Join(",", fileExclusions);     // BREAKPOINT: Проверка объединения файлов
+            string folderFilterString = string.Join(",", folderExclusions);
+            string fileFilterString = string.Join(",", fileExclusions);
             Log($"Промежуточные строки: FolderFilterString={folderFilterString}, FileFilterString={fileFilterString}");
 
-            Properties.Settings.Default.FolderFilters = folderFilterString; // BREAKPOINT: Присвоение FolderFilters
-            Properties.Settings.Default.FileFilters = fileFilterString;    // BREAKPOINT: Присвоение FileFilters
+            Properties.Settings.Default.FolderFilters = folderFilterString;
+            Properties.Settings.Default.FileFilters = fileFilterString;
             Log($"Присвоены значения: FolderFilters={Properties.Settings.Default.FolderFilters}, FileFilters={Properties.Settings.Default.FileFilters}");
+
+            // --- ДОБАВЛЕННЫЙ КОД ДЛЯ СОХРАНЕНИЯ ШРИФТА ---
+            if (FontComboBox.SelectedItem is FontFamily selectedFont)
+            {
+                Properties.Settings.Default.ApplicationFontFamily = selectedFont.Source;
+            }
+            // --- КОНЕЦ ДОБАВЛЕННОГО КОДА ---
 
             try
             {
-                // BREAKPOINT: Перед вызовом Save для проверки значений
                 Properties.Settings.Default.Save();
                 Log($"Настройки сохранены: FolderFilters={Properties.Settings.Default.FolderFilters}, FileFilters={Properties.Settings.Default.FileFilters}");
             }
             catch (Exception ex)
             {
-                // BREAKPOINT: Проверка ошибок при сохранении
                 Log($"Ошибка сохранения настроек: {ex.Message}");
                 MessageBox.Show($"Ошибка при сохранении настроек: {ex.Message}");
             }
