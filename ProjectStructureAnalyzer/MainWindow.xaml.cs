@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives; // Добавлено для GeneratorStatus
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
@@ -108,6 +109,9 @@ namespace ProjectStructureAnalyzer
                 {
                     projectItems.Add(rootItem);
                     UpdateStatistics();
+                    // Ожидание генерации контейнеров и развертывание дерева
+                    ProjectTreeView.UpdateLayout();
+                    ExpandTreeViewItems(ProjectTreeView);
                     ExportButton.IsEnabled = true;
                     StatusText.Text = "Анализ завершен успешно.";
                 }
@@ -253,7 +257,6 @@ namespace ProjectStructureAnalyzer
             var indent = new string(' ', level * 2);
             var prefix = item.IsDirectory ? "📁" : "📄";
             var info = item.IsDirectory ? $" ({item.FileCount} файлов)" : $" ({FormatFileSize(item.Size)})";
-
             writer.WriteLine($"{indent}{prefix} {item.Name}{info}");
 
             foreach (var child in item.Children)
@@ -266,6 +269,65 @@ namespace ProjectStructureAnalyzer
         {
             var settingsWindow = new SettingsWindow();
             settingsWindow.ShowDialog();
+        }
+
+        private void ExpandTreeViewItems(ItemsControl itemsControl)
+        {
+            foreach (var item in itemsControl.Items)
+            {
+                if (itemsControl.ItemContainerGenerator.Status != System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+                {
+                    itemsControl.ItemContainerGenerator.StatusChanged += (s, e) =>
+                    {
+                        if (itemsControl.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+                        {
+                            if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem treeViewItem)
+                            {
+                                treeViewItem.IsExpanded = true;
+                                ExpandTreeViewItems(treeViewItem);
+                            }
+                        }
+                    };
+                }
+                else
+                {
+                    if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem treeViewItem)
+                    {
+                        treeViewItem.IsExpanded = true;
+                        ExpandTreeViewItems(treeViewItem);
+                    }
+                }
+            }
+        }
+
+        private void ExpandTreeViewItems(TreeViewItem item)
+        {
+            item.IsExpanded = true;
+            foreach (var subItem in item.Items)
+            {
+                if (item.ItemContainerGenerator.Status != System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+                {
+                    item.ItemContainerGenerator.StatusChanged += (s, e) =>
+                    {
+                        if (item.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+                        {
+                            if (item.ItemContainerGenerator.ContainerFromItem(subItem) is TreeViewItem subTreeViewItem)
+                            {
+                                subTreeViewItem.IsExpanded = true;
+                                ExpandTreeViewItems(subTreeViewItem);
+                            }
+                        }
+                    };
+                }
+                else
+                {
+                    if (item.ItemContainerGenerator.ContainerFromItem(subItem) is TreeViewItem subTreeViewItem)
+                    {
+                        subTreeViewItem.IsExpanded = true;
+                        ExpandTreeViewItems(subTreeViewItem);
+                    }
+                }
+            }
         }
     }
 
