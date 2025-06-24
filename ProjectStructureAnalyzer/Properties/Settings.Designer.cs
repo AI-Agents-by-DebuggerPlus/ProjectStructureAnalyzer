@@ -37,19 +37,19 @@ namespace ProjectStructureAnalyzer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string FolderFilters {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ApplicationFontSize {
             get {
-                return ((string)(this["FolderFilters"]));
+                return ((int)(this["ApplicationFontSize"]));
             }
             set {
-                this["FolderFilters"] = value;
+                this["ApplicationFontSize"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public string FileFilters {
             get {
                 return ((string)(this["FileFilters"]));
@@ -68,6 +68,18 @@ namespace ProjectStructureAnalyzer.Properties {
             }
             set {
                 this["ApplicationFontFamily"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public string FolderFilters {
+            get {
+                return ((string)(this["FolderFilters"]));
+            }
+            set {
+                this["FolderFilters"] = value;
             }
         }
     }

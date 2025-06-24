@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic; // ДОБАВЛЕНО для HashSet
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
@@ -22,14 +23,17 @@ namespace ProjectStructureAnalyzer
                 IsUserFolder = !IsSystemFolder(dirInfo.Name)
             };
 
-            var folderExclusions = (Properties.Settings.Default.FolderFilters ?? "").Split(',')
-                .Select(f => f.Trim())
+            // --- ИЗМЕНЕНО: Исправлено чтение настроек фильтров ---
+            var folderExclusions = (Properties.Settings.Default.FolderFilters ?? "")
+                .Split(',')
                 .Where(f => !string.IsNullOrEmpty(f))
-                .ToList();
-            var fileExclusions = (Properties.Settings.Default.FileFilters ?? "").Split(',')
-                .Select(f => f.Trim().ToLower())
+                .ToHashSet(); // HashSet для более быстрой проверки
+
+            var fileExclusions = (Properties.Settings.Default.FileFilters ?? "")
+                .Split(',')
                 .Where(f => !string.IsNullOrEmpty(f))
-                .ToList();
+                .ToHashSet();
+            // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
             Log($"Analyzing directory: {path}");
 
@@ -62,7 +66,8 @@ namespace ProjectStructureAnalyzer
                     foreach (var file in dirInfo.GetFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden)))
                     {
                         Log($"Checking file: {file.Name}");
-                        if (fileExclusions.Count == 0 || !fileExclusions.Contains(file.Extension.ToLower()))
+                        // ИСПРАВЛЕНО: Убрана проверка на fileExclusions.Count, Contains корректно работает с пустым HashSet
+                        if (!fileExclusions.Contains(file.Extension.ToLower()))
                         {
                             Log($"File {file.Name} not excluded, adding...");
                             item.Children.Add(new ProjectItem
@@ -98,41 +103,46 @@ namespace ProjectStructureAnalyzer
             bool isExcludedFolder = folderExclusions.Contains(dirInfo.Name);
             bool hasFiles = item.FileCount > 0;
             Log($"Evaluation: HasChildren={hasChildren}, IsExcludedFolder={isExcludedFolder}, HasFiles={hasFiles}");
-            return (path == selectedPath) || (hasChildren) || (!isExcludedFolder && (hasChildren || hasFiles)) ? item : null;
 
-            // Вспомогательные методы
-            void Log(string message)
+            // Упрощенная логика возврата
+            if (path == selectedPath) return item;
+            if (hasChildren) return item;
+
+            return null;
+        }
+
+        // Вспомогательные методы
+        private void Log(string message)
+        {
+            try
             {
-                try
+                using (StreamWriter writer = File.AppendText(logFilePath))
                 {
-                    using (StreamWriter writer = File.AppendText(logFilePath))
-                    {
-                        writer.WriteLine($"{DateTime.Now}: {message}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Log error: {ex.Message}");
+                    writer.WriteLine($"{DateTime.Now}: {message}");
                 }
             }
-
-            int CountFiles(ProjectItem node)
+            catch (Exception ex)
             {
-                if (!node.IsDirectory) return 1;
-
-                int count = 0;
-                foreach (var child in node.Children)
-                {
-                    count += CountFiles(child);
-                }
-                return count;
+                Console.WriteLine($"Log error: {ex.Message}");
             }
+        }
 
-            bool IsSystemFolder(string folderName)
+        private int CountFiles(ProjectItem node)
+        {
+            if (!node.IsDirectory) return 1;
+
+            int count = 0;
+            foreach (var child in node.Children)
             {
-                string[] systemFolders = { "bin", "obj", "Debug", "Release", ".vs", "packages" };
-                return systemFolders.Contains(folderName.ToLower());
+                count += CountFiles(child);
             }
+            return count;
+        }
+
+        private bool IsSystemFolder(string folderName)
+        {
+            string[] systemFolders = { "bin", "obj", "Debug", "Release", ".vs", "packages" };
+            return systemFolders.Contains(folderName.ToLower());
         }
     }
 }

@@ -1,36 +1,26 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media; // ДОБАВЛЕН
+using System.Windows.Media;
 
 namespace ProjectStructureAnalyzer
 {
     public partial class SettingsWindow : Window
     {
-        private readonly string logFilePath = "settings_log.txt";
-
         public SettingsWindow()
         {
             InitializeComponent();
-            Log("Запуск приложения");
             LoadSettings();
         }
 
         private void LoadSettings()
         {
-            Log(""); // Пустая строка для разделения этапов
-            Log("Загрузка настроек");
-
-            var folderExclusions = (Properties.Settings.Default.FolderFilters ?? "").Split(',')
-                .Select(f => f.Trim())
-                .Where(f => !string.IsNullOrEmpty(f))
-                .ToArray();
-            var fileExclusions = (Properties.Settings.Default.FileFilters ?? "").Split(',')
-                .Select(f => f.Trim().ToLower())
-                .Where(f => !string.IsNullOrEmpty(f))
-                .ToArray();
+            // --- Загрузка фильтров ---
+            var folderExclusions = (Properties.Settings.Default.FolderFilters ?? "").Split(',');
+            var fileExclusions = (Properties.Settings.Default.FileFilters ?? "").Split(',');
 
             FolderSrcCheckBox.IsChecked = folderExclusions.Contains("src");
             FolderBinCheckBox.IsChecked = folderExclusions.Contains("bin");
@@ -42,97 +32,96 @@ namespace ProjectStructureAnalyzer
             FileCsprojCheckBox.IsChecked = fileExclusions.Contains(".csproj");
             FileConfigCheckBox.IsChecked = fileExclusions.Contains(".config");
 
-            Log($"Загружены настройки: FolderExclusions={string.Join(",", folderExclusions)}, FileExclusions={string.Join(",", fileExclusions)}");
-
-            // --- ДОБАВЛЕННЫЙ КОД ДЛЯ ЗАГРУЗКИ ШРИФТОВ ---
+            // --- Загрузка и настройка шрифта ---
             FontComboBox.ItemsSource = Fonts.SystemFontFamilies.OrderBy(f => f.Source);
             string savedFont = Properties.Settings.Default.ApplicationFontFamily;
             if (!string.IsNullOrEmpty(savedFont))
             {
                 FontComboBox.SelectedItem = new FontFamily(savedFont);
             }
-            if (FontComboBox.SelectedItem == null) // Если шрифт не найден или не был сохранен
+            if (FontComboBox.SelectedItem == null)
             {
                 FontComboBox.SelectedItem = new FontFamily("Segoe UI");
             }
-            // --- КОНЕЦ ДОБАВЛЕННОГО КОДА ---
+
+            // --- Загрузка и настройка размера шрифта ---
+            // Примечание: предполагается, что тип ApplicationFontSize в настройках - int
+            int savedSize = Properties.Settings.Default.ApplicationFontSize;
+            if (savedSize > 0)
+            {
+                FontSizeSlider.Value = savedSize;
+            }
+            else
+            {
+                FontSizeSlider.Value = 13;
+            }
+
+            // Первоначальное обновление предпросмотра
+            UpdatePreview();
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            Log("");
-            Log("Сохранение и применение настроек");
+            // --- Сохранение фильтров ---
+            var folderExclusions = new List<string>();
+            if (FolderSrcCheckBox.IsChecked == true) folderExclusions.Add("src");
+            if (FolderBinCheckBox.IsChecked == true) folderExclusions.Add("bin");
+            if (FolderObjCheckBox.IsChecked == true) folderExclusions.Add("obj");
+            if (FolderPropertiesCheckBox.IsChecked == true) folderExclusions.Add("Properties");
+            Properties.Settings.Default.FolderFilters = string.Join(",", folderExclusions);
 
-            bool binChecked = FolderBinCheckBox.IsChecked ?? false;
-            bool objChecked = FolderObjCheckBox.IsChecked ?? false;
-            Log($"Состояние чекбоксов: FolderBinCheckBox={binChecked}, FolderObjCheckBox={objChecked}");
+            var fileExclusions = new List<string>();
+            if (FileCsCheckBox.IsChecked == true) fileExclusions.Add(".cs");
+            if (FileSlnCheckBox.IsChecked == true) fileExclusions.Add(".sln");
+            if (FileCsprojCheckBox.IsChecked == true) fileExclusions.Add(".csproj");
+            if (FileConfigCheckBox.IsChecked == true) fileExclusions.Add(".config");
+            Properties.Settings.Default.FileFilters = string.Join(",", fileExclusions);
 
-            var folderExclusions = new[] { "src", "bin", "obj", "Properties" }
-                .Where(f =>
-                    (f == "bin" && FolderBinCheckBox.IsChecked == true) ||
-                    (f == "obj" && FolderObjCheckBox.IsChecked == true) ||
-                    (f == "src" && FolderSrcCheckBox.IsChecked == true) ||
-                    (f == "Properties" && FolderPropertiesCheckBox.IsChecked == true))
-                .ToArray();
-            var fileExclusions = new[] { ".cs", ".sln", ".csproj", ".config" }
-                .Where(f =>
-                    (f == ".cs" && FileCsCheckBox.IsChecked == true) ||
-                    (f == ".sln" && FileSlnCheckBox.IsChecked == true) ||
-                    (f == ".csproj" && FileCsprojCheckBox.IsChecked == true) ||
-                    (f == ".config" && FileConfigCheckBox.IsChecked == true))
-                .ToArray();
-
-            Log($"Состояние чекбоксов (после фильтрации): FolderExclusions={string.Join(",", folderExclusions)}, FileExclusions={string.Join(",", fileExclusions)}");
-
-            string folderFilterString = string.Join(",", folderExclusions);
-            string fileFilterString = string.Join(",", fileExclusions);
-            Log($"Промежуточные строки: FolderFilterString={folderFilterString}, FileFilterString={fileFilterString}");
-
-            Properties.Settings.Default.FolderFilters = folderFilterString;
-            Properties.Settings.Default.FileFilters = fileFilterString;
-            Log($"Присвоены значения: FolderFilters={Properties.Settings.Default.FolderFilters}, FileFilters={Properties.Settings.Default.FileFilters}");
-
-            // --- ДОБАВЛЕННЫЙ КОД ДЛЯ СОХРАНЕНИЯ ШРИФТА ---
+            // --- Сохранение семейства шрифта ---
             if (FontComboBox.SelectedItem is FontFamily selectedFont)
             {
                 Properties.Settings.Default.ApplicationFontFamily = selectedFont.Source;
             }
-            // --- КОНЕЦ ДОБАВЛЕННОГО КОДА ---
 
-            try
-            {
-                Properties.Settings.Default.Save();
-                Log($"Настройки сохранены: FolderFilters={Properties.Settings.Default.FolderFilters}, FileFilters={Properties.Settings.Default.FileFilters}");
-            }
-            catch (Exception ex)
-            {
-                Log($"Ошибка сохранения настроек: {ex.Message}");
-                MessageBox.Show($"Ошибка при сохранении настроек: {ex.Message}");
-            }
+            // --- Сохранение размера шрифта (с приведением к int) ---
+            Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value;
 
-            Close();
+            Properties.Settings.Default.Save();
+            this.DialogResult = true;
+            this.Close();
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            Close();
+            this.DialogResult = false;
+            this.Close();
         }
 
-        private void Log(string message)
+        private void PreviewSettingsChanged(object sender, RoutedEventArgs e)
         {
-            try
+            UpdatePreview();
+        }
+
+        /// <summary>
+        /// Обновляет текст предпросмотра. Содержит проверки для предотвращения сбоев при инициализации.
+        /// </summary>
+        private void UpdatePreview()
+        {
+            // "Предохранитель", который не дает коду выполниться, пока все элементы не будут готовы.
+            if (FontComboBox == null || FontSizeSlider == null || PreviewTextBlock == null)
             {
-                using (StreamWriter writer = File.AppendText(logFilePath))
-                {
-                    writer.WriteLine($"{DateTime.Now}: {message}");
-                }
+                return;
             }
-            catch (Exception ex)
+
+            // Теперь, когда мы уверены, что элементы существуют, можно безопасно их использовать.
+            if (FontComboBox.SelectedItem is FontFamily selectedFont)
             {
-                Console.WriteLine($"Log error: {ex.Message}");
+                PreviewTextBlock.FontFamily = selectedFont;
+                PreviewTextBlock.FontSize = FontSizeSlider.Value;
             }
         }
 
+        #region Custom Title Bar Methods
         private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
@@ -145,5 +134,6 @@ namespace ProjectStructureAnalyzer
         {
             this.Close();
         }
+        #endregion
     }
 }

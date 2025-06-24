@@ -46,7 +46,7 @@ namespace ProjectStructureAnalyzer
             }
 
             // Логирование загрузки настроек
-            Log($"Loading settings: FolderFilters={Properties.Settings.Default.FolderFilters}, FileFilters={Properties.Settings.Default.FileFilters}");
+            Log($"Loading settings: FolderFilters={Properties.Settings.Default.ApplicationFontSize}, FileFilters={Properties.Settings.Default.FileFilters}");
 
             projectItems = new ObservableCollection<ProjectItem>();
             ProjectTreeView.ItemsSource = projectItems;
