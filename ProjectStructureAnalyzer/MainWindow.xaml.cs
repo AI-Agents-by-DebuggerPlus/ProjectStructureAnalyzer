@@ -5,7 +5,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media; // Добавлена для SolidColorBrush и Colors
+using System.Windows.Media;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using System.Threading.Tasks;
@@ -17,12 +17,27 @@ namespace ProjectStructureAnalyzer
     {
         private readonly ObservableCollection<ProjectItem> projectItems;
         private string selectedPath;
+        private readonly string logFilePath = "structure_log.txt";
+        private readonly DirectoryAnalyzer directoryAnalyzer = new DirectoryAnalyzer();
 
         public event PropertyChangedEventHandler PropertyChanged;
 
         public MainWindow()
         {
             InitializeComponent();
+            // Очистка лог-файла при запуске
+            if (File.Exists(logFilePath))
+            {
+                File.Delete(logFilePath);
+            }
+            using (StreamWriter writer = File.CreateText(logFilePath))
+            {
+                writer.WriteLine($"Log started at {DateTime.Now}");
+            }
+
+            // Логирование загрузки настроек
+            Log($"Loading settings: FolderFilters={Properties.Settings.Default.FolderFilters}, FileFilters={Properties.Settings.Default.FileFilters}");
+
             projectItems = new ObservableCollection<ProjectItem>();
             ProjectTreeView.ItemsSource = projectItems;
 
@@ -88,7 +103,7 @@ namespace ProjectStructureAnalyzer
                 StatusText.Text = "Анализ структуры проекта...";
                 projectItems.Clear();
 
-                var rootItem = await AnalyzeDirectoryAsync(SelectedPath);
+                var rootItem = await directoryAnalyzer.AnalyzeDirectoryAsync(SelectedPath, SelectedPath);
                 if (rootItem != null)
                 {
                     projectItems.Add(rootItem);
@@ -96,66 +111,35 @@ namespace ProjectStructureAnalyzer
                     ExportButton.IsEnabled = true;
                     StatusText.Text = "Анализ завершен успешно.";
                 }
+                else
+                {
+                    StatusText.Text = "Нет данных для отображения согласно фильтрам.";
+                    Log("No items to display based on filters.");
+                }
+                Log(""); // Пустая строка после построения
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при анализе: {ex.Message}");
                 StatusText.Text = "Ошибка при анализе.";
+                Log($"Error during analysis: {ex.Message}");
             }
         }
 
-        private async Task<ProjectItem> AnalyzeDirectoryAsync(string path)
+        private void Log(string message)
         {
-            var dirInfo = new DirectoryInfo(path);
-            var item = new ProjectItem
-            {
-                Name = dirInfo.Name,
-                FullPath = path,
-                IsDirectory = true,
-                Children = new ObservableCollection<ProjectItem>(),
-                IsUserFolder = !IsSystemFolder(dirInfo.Name)
-            };
-
-            var folderFilters = (Properties.Settings.Default.FolderFilters ?? "").Split(',').Select(f => f.Trim()).Where(f => !string.IsNullOrEmpty(f)).ToList();
-            var fileFilters = (Properties.Settings.Default.FileFilters ?? "").Split(',').Select(f => f.Trim().ToLower()).Where(f => !string.IsNullOrEmpty(f)).ToList();
-
             try
             {
-                foreach (var dir in dirInfo.GetDirectories().Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden)))
+                using (StreamWriter writer = File.AppendText(logFilePath))
                 {
-                    if (folderFilters.Count == 0 || folderFilters.Contains(dir.Name))
-                    {
-                        var childItem = await AnalyzeDirectoryAsync(dir.FullName);
-                        if (childItem != null)
-                        {
-                            item.Children.Add(childItem);
-                        }
-                    }
+                    writer.WriteLine($"{DateTime.Now}: {message}");
                 }
-
-                foreach (var file in dirInfo.GetFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden)))
-                {
-                    if (fileFilters.Count == 0 || fileFilters.Contains(file.Extension.ToLower()))
-                    {
-                        item.Children.Add(new ProjectItem
-                        {
-                            Name = file.Name,
-                            FullPath = file.FullName,
-                            IsDirectory = false,
-                            Size = file.Length,
-                            Extension = file.Extension.ToLower()
-                        });
-                    }
-                }
-
-                item.FileCount = CountFiles(item);
             }
-            catch (UnauthorizedAccessException)
+            catch (Exception ex)
             {
-                return null;
+                // Игнорируем ошибки записи в лог, чтобы не прерывать выполнение
+                Console.WriteLine($"Log error: {ex.Message}");
             }
-
-            return item;
         }
 
         private bool IsSystemFolder(string folderName)
@@ -225,12 +209,12 @@ namespace ProjectStructureAnalyzer
                 return;
             }
 
-            var projectName = new DirectoryInfo(SelectedPath).Name; // Используем имя корневой папки как название проекта
+            var projectName = new DirectoryInfo(SelectedPath).Name;
             var saveDialog = new SaveFileDialog
             {
                 Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
                 DefaultExt = "txt",
-                FileName = $"{projectName}_structure.txt" // Название файла соответствует проекту
+                FileName = $"{projectName}_structure.txt"
             };
 
             if (saveDialog.ShowDialog() == true)
@@ -249,7 +233,6 @@ namespace ProjectStructureAnalyzer
                         }
                     }
 
-                    // Подсвечиваем сообщение о сохранении
                     ExportStatusText.Text = $"Файл структуры сохранен: {saveDialog.FileName}";
                     ExportStatusText.Visibility = Visibility.Visible;
                     ExportStatusText.Foreground = new SolidColorBrush(Colors.Green);
