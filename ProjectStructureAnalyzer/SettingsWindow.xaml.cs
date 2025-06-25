@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +17,7 @@ namespace ProjectStructureAnalyzer
 
         private void LoadSettings()
         {
-            // --- Загрузка фильтров ---
+            // Загрузка фильтров
             var folderExclusions = (Properties.Settings.Default.FolderFilters ?? "").Split(',');
             var fileExclusions = (Properties.Settings.Default.FileFilters ?? "").Split(',');
 
@@ -32,7 +31,7 @@ namespace ProjectStructureAnalyzer
             FileCsprojCheckBox.IsChecked = fileExclusions.Contains(".csproj");
             FileConfigCheckBox.IsChecked = fileExclusions.Contains(".config");
 
-            // --- Загрузка и настройка шрифта ---
+            // Загрузка и настройка шрифта
             FontComboBox.ItemsSource = Fonts.SystemFontFamilies.OrderBy(f => f.Source);
             string savedFont = Properties.Settings.Default.ApplicationFontFamily;
             if (!string.IsNullOrEmpty(savedFont))
@@ -44,8 +43,7 @@ namespace ProjectStructureAnalyzer
                 FontComboBox.SelectedItem = new FontFamily("Segoe UI");
             }
 
-            // --- Загрузка и настройка размера шрифта ---
-            // Примечание: предполагается, что тип ApplicationFontSize в настройках - int
+            // Загрузка и настройка размера шрифта
             int savedSize = Properties.Settings.Default.ApplicationFontSize;
             if (savedSize > 0)
             {
@@ -56,13 +54,12 @@ namespace ProjectStructureAnalyzer
                 FontSizeSlider.Value = 13;
             }
 
-            // Первоначальное обновление предпросмотра
             UpdatePreview();
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // --- Сохранение фильтров ---
+            // Сохранение фильтров
             var folderExclusions = new List<string>();
             if (FolderSrcCheckBox.IsChecked == true) folderExclusions.Add("src");
             if (FolderBinCheckBox.IsChecked == true) folderExclusions.Add("bin");
@@ -77,13 +74,13 @@ namespace ProjectStructureAnalyzer
             if (FileConfigCheckBox.IsChecked == true) fileExclusions.Add(".config");
             Properties.Settings.Default.FileFilters = string.Join(",", fileExclusions);
 
-            // --- Сохранение семейства шрифта ---
+            // Сохранение семейства шрифта
             if (FontComboBox.SelectedItem is FontFamily selectedFont)
             {
                 Properties.Settings.Default.ApplicationFontFamily = selectedFont.Source;
             }
 
-            // --- Сохранение размера шрифта (с приведением к int) ---
+            // Сохранение размера шрифта
             Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value;
 
             Properties.Settings.Default.Save();
@@ -102,18 +99,13 @@ namespace ProjectStructureAnalyzer
             UpdatePreview();
         }
 
-        /// <summary>
-        /// Обновляет текст предпросмотра. Содержит проверки для предотвращения сбоев при инициализации.
-        /// </summary>
         private void UpdatePreview()
         {
-            // "Предохранитель", который не дает коду выполниться, пока все элементы не будут готовы.
             if (FontComboBox == null || FontSizeSlider == null || PreviewTextBlock == null)
             {
                 return;
             }
 
-            // Теперь, когда мы уверены, что элементы существуют, можно безопасно их использовать.
             if (FontComboBox.SelectedItem is FontFamily selectedFont)
             {
                 PreviewTextBlock.FontFamily = selectedFont;

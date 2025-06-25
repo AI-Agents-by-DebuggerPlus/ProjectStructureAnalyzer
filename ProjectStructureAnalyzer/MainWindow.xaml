@@ -10,9 +10,11 @@
         Background="Transparent">
 
     <Window.Resources>
+        <!-- Локальные ресурсы, такие как конвертеры, остаются StaticResource -->
         <local:DirectoryToIconConverter x:Key="DirectoryToIconConverter" />
     </Window.Resources>
 
+    <!-- Используем DynamicResource для кистей, чтобы тема применялась после загрузки -->
     <Border Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="4" BorderThickness="1" BorderBrush="{DynamicResource ControlBorderBrush}">
         <DockPanel>
 
@@ -23,17 +25,16 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Иконка и заголовок -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
                     <Image Source="/ProjectStructureAnalyzer;component/Images/folder.png" Width="16" Height="16" Margin="0,0,8,0"/>
                     <TextBlock Text="Project Structure Analyzer" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Кнопки управления окном -->
+                <!-- Кнопки управления окном. ИСПОЛЬЗУЕМ DYNAMICRESOURCE -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="🗕" Width="32" Height="32" Click="Minimize_Click" Style="{StaticResource TitleBarButtonStyle}" />
-                    <Button Content="🗖" Width="32" Height="32" Click="MaximizeRestore_Click" Style="{StaticResource TitleBarButtonStyle}" />
-                    <Button Content="✕" Width="32" Height="32" Click="Close_Click" Style="{StaticResource TitleBarButtonStyle}" Foreground="Red"/>
+                    <Button Content="🗕" Width="32" Height="32" Click="Minimize_Click" Style="{DynamicResource TitleBarButtonStyle}" />
+                    <Button Content="🗖" Width="32" Height="32" Click="MaximizeRestore_Click" Style="{DynamicResource TitleBarButtonStyle}" />
+                    <Button Content="✕" Width="32" Height="32" Click="Close_Click" Style="{DynamicResource TitleBarButtonStyle}" Foreground="Red"/>
                 </StackPanel>
             </Grid>
 
@@ -58,13 +59,14 @@
                         <TextBlock x:Name="FileCountText" Text="0"/>
                     </StackPanel>
                     <TextBlock x:Name="ExportStatusText" 
-           Foreground="Green" 
-           Visibility="Visible"
-           TextWrapping="Wrap" />
+                               Foreground="Green" 
+                               Visibility="Collapsed"
+                               TextWrapping="Wrap" />
                 </StackPanel>
 
+                <!-- TreeView. ИСПОЛЬЗУЕМ DYNAMICRESOURCE -->
                 <TreeView x:Name="ProjectTreeView" Grid.Column="1" 
-                          ItemContainerStyle="{StaticResource TreeViewItemStyle}" 
+                          ItemContainerStyle="{DynamicResource TreeViewItemStyle}" 
                           SelectedItemChanged="TreeViewItem_Selected">
                     <TreeView.Resources>
                         <HierarchicalDataTemplate DataType="{x:Type local:ProjectItem}" ItemsSource="{Binding Children}">

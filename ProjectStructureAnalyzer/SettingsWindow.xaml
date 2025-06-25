@@ -4,15 +4,15 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Width="400"
+        Width="450"
         WindowStyle="None" 
         AllowsTransparency="True" 
         Background="Transparent" 
         WindowStartupLocation="CenterOwner"
         SizeToContent="Height">
 
-    <Border Background="{StaticResource WindowBackgroundBrush}"
-            BorderBrush="{StaticResource ControlBorderBrush}"
+    <Border Background="{DynamicResource WindowBackgroundBrush}"
+            BorderBrush="{DynamicResource ControlBorderBrush}"
             BorderThickness="1"
             CornerRadius="8">
         <Grid>
@@ -23,44 +23,47 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Height="40" Background="Transparent" MouseDown="TitleBar_MouseDown">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
                 <TextBlock Text="Настройки"
-                           Grid.Column="0"
                            FontSize="16"
                            Margin="15,0,0,0"
                            VerticalAlignment="Center"
-                           Foreground="{StaticResource TextBrush}"/>
+                           Foreground="{DynamicResource TextBrush}"/>
 
                 <Button x:Name="CloseButton" 
-                        Grid.Column="1"
                         Content="✕" 
-                        Style="{StaticResource TitleBarButtonStyle}"
+                        Style="{DynamicResource TitleBarButtonStyle}"
                         Width="40"
                         Click="CloseButton_Click" 
-                        VerticalAlignment="Top"/>
+                        VerticalAlignment="Top"
+                        HorizontalAlignment="Right"/>
             </Grid>
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="15,10">
                     <TextBlock Text="Исключить из анализа следующие папки и файлы:" FontWeight="Bold" Margin="0,0,0,10"/>
-                    <TextBlock Text="Папки:" Margin="0,0,0,5"/>
-                    <CheckBox x:Name="FolderSrcCheckBox" Content="src" Margin="5,0,0,5"/>
-                    <CheckBox x:Name="FolderBinCheckBox" Content="bin" Margin="5,0,0,5"/>
-                    <CheckBox x:Name="FolderObjCheckBox" Content="obj" Margin="5,0,0,5"/>
-                    <CheckBox x:Name="FolderPropertiesCheckBox" Content="Properties" Margin="5,0,0,5"/>
-                    <TextBlock Text="Файлы:" Margin="0,10,0,5"/>
-                    <CheckBox x:Name="FileCsCheckBox" Content=".cs" Margin="5,0,0,5"/>
-                    <CheckBox x:Name="FileSlnCheckBox" Content=".sln" Margin="5,0,0,5"/>
-                    <CheckBox x:Name="FileCsprojCheckBox" Content=".csproj" Margin="5,0,0,5"/>
-                    <CheckBox x:Name="FileConfigCheckBox" Content=".config" Margin="5,0,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Папки:" Margin="0,0,0,5"/>
+                            <CheckBox x:Name="FolderSrcCheckBox" Content="src" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FolderBinCheckBox" Content="bin" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FolderObjCheckBox" Content="obj" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FolderPropertiesCheckBox" Content="Properties" Margin="5,0,0,5"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Файлы:" Margin="0,0,0,5"/>
+                            <CheckBox x:Name="FileCsCheckBox" Content=".cs" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FileSlnCheckBox" Content=".sln" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FileCsprojCheckBox" Content=".csproj" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FileConfigCheckBox" Content=".config" Margin="5,0,0,5"/>
+                        </StackPanel>
+                    </Grid>
 
-                    <TextBlock Text="Настройки шрифта" FontWeight="Bold" Margin="0,15,0,10"/>
-
-                    <Border BorderBrush="{StaticResource ControlBorderBrush}" 
+                    <TextBlock Text="Настройки шрифта" FontWeight="Bold" Margin="0,20,0,10"/>
+                    <Border BorderBrush="{DynamicResource ControlBorderBrush}" 
                             BorderThickness="1" 
                             CornerRadius="4" 
                             Margin="0,0,0,10"
@@ -70,43 +73,48 @@
                                    TextWrapping="Wrap"/>
                     </Border>
 
-                    <TextBlock Text="Размер шрифта:" Margin="0,10,0,5"/>
                     <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Slider x:Name="FontSizeSlider" 
-                                Grid.Column="0"
-                                Minimum="10" Maximum="24"
-                                Value="13"
-                                TickFrequency="1"
-                                IsSnapToTickEnabled="True"
-                                ValueChanged="PreviewSettingsChanged"
-                                VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding ElementName=FontSizeSlider, Path=Value, StringFormat={}{0:F0} пт}"
-                                   Width="40"
-                                   TextAlignment="Right"
-                                   Margin="10,0,0,0"
-                                   VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Шрифт приложения:" VerticalAlignment="Center" Margin="0,5,10,5"/>
+                        <ComboBox x:Name="FontComboBox"
+                                  Grid.Row="0" Grid.Column="1"
+                                  Margin="0,5,0,10"
+                                  ItemContainerStyle="{DynamicResource DarkComboBoxItemStyle}"
+                                  SelectionChanged="PreviewSettingsChanged"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Размер шрифта:" VerticalAlignment="Center" Margin="0,5,10,5"/>
+
+                        <Grid Grid.Row="1" Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Slider x:Name="FontSizeSlider" 
+                                    Grid.Column="0"
+                                    Minimum="10" Maximum="24"
+                                    Value="13"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    ValueChanged="PreviewSettingsChanged"
+                                    VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ElementName=FontSizeSlider, Path=Value, StringFormat={}{0:F0} пт}"
+                                       Width="40"
+                                       TextAlignment="Right"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
                     </Grid>
-
-                    <TextBlock Text="Шрифт приложения:" Margin="0,10,0,5"/>
-                    <ComboBox x:Name="FontComboBox"
-                              Margin="0,0,0,5"
-                              ItemContainerStyle="{StaticResource DarkComboBoxItemStyle}"
-                              SelectionChanged="PreviewSettingsChanged">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Source}" 
-                                           FontFamily="{Binding}"
-                                           FontSize="14"
-                                           Foreground="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=ComboBoxItem}}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-
                 </StackPanel>
             </ScrollViewer>
 

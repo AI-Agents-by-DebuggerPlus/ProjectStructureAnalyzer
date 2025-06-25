@@ -4,9 +4,9 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives; // Для GeneratorStatus
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media; // ДОБАВЛЕНО
+using System.Windows.Media;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using System.Threading.Tasks;
@@ -17,6 +17,9 @@ namespace ProjectStructureAnalyzer
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
+        // ... (весь код класса MainWindow остается без изменений) ...
+        // ... (методы, конструктор, обработчики событий и т.д.) ...
+
         private readonly ObservableCollection<ProjectItem> projectItems;
         private string selectedPath;
         private readonly string logFilePath = "structure_log.txt";
@@ -28,14 +31,6 @@ namespace ProjectStructureAnalyzer
         {
             InitializeComponent();
 
-            // --- ДОБАВЛЕННЫЙ КОД: Применение сохраненного шрифта ---
-            if (!string.IsNullOrEmpty(Properties.Settings.Default.ApplicationFontFamily))
-            {
-                this.FontFamily = new FontFamily(Properties.Settings.Default.ApplicationFontFamily);
-            }
-            // --- КОНЕЦ ДОБАВЛЕННОГО КОДА ---
-
-            // Очистка лог-файла при запуске
             if (File.Exists(logFilePath))
             {
                 File.Delete(logFilePath);
@@ -45,13 +40,11 @@ namespace ProjectStructureAnalyzer
                 writer.WriteLine($"Log started at {DateTime.Now}");
             }
 
-            // Логирование загрузки настроек
-            Log($"Loading settings: FolderFilters={Properties.Settings.Default.ApplicationFontSize}, FileFilters={Properties.Settings.Default.FileFilters}");
+            ApplySettings();
 
             projectItems = new ObservableCollection<ProjectItem>();
             ProjectTreeView.ItemsSource = projectItems;
 
-            // Загрузка последней выбранной директории
             SelectedPath = Properties.Settings.Default.LastSelectedPath;
             if (!string.IsNullOrEmpty(SelectedPath) && Directory.Exists(SelectedPath))
             {
@@ -81,7 +74,44 @@ namespace ProjectStructureAnalyzer
             }
         }
 
-        private void OnPropertyChanged(string propertyName)
+        private void ApplySettings()
+        {
+            Log("--- Applying settings on MainWindow ---");
+            try
+            {
+                string fontFamilyName = Properties.Settings.Default.ApplicationFontFamily;
+                double fontSize = Properties.Settings.Default.ApplicationFontSize;
+
+                Log($"Read settings: FontFamily='{fontFamilyName}', FontSize='{fontSize}'");
+
+                if (!string.IsNullOrEmpty(fontFamilyName))
+                {
+                    this.FontFamily = new FontFamily(fontFamilyName);
+                    Log($"Applied FontFamily: {fontFamilyName}");
+                }
+                else
+                {
+                    Log("FontFamily setting is empty or null. Skipping apply.");
+                }
+
+                if (fontSize > 0)
+                {
+                    this.FontSize = fontSize;
+                    Log($"Applied FontSize: {fontSize}");
+                }
+                else
+                {
+                    Log("FontSize setting is zero or less. Skipping apply.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error applying settings: {ex.Message}");
+            }
+            Log("--- Finished applying settings ---");
+        }
+
+        protected void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
@@ -118,7 +148,6 @@ namespace ProjectStructureAnalyzer
                 {
                     projectItems.Add(rootItem);
                     UpdateStatistics();
-                    // Ожидание генерации контейнеров и развертывание дерева
                     ProjectTreeView.UpdateLayout();
                     ExpandTreeViewItems(ProjectTreeView);
                     ExportButton.IsEnabled = true;
@@ -129,7 +158,7 @@ namespace ProjectStructureAnalyzer
                     StatusText.Text = "Нет данных для отображения согласно фильтрам.";
                     Log("No items to display based on filters.");
                 }
-                Log(""); // Пустая строка после построения
+                Log("");
             }
             catch (Exception ex)
             {
@@ -150,35 +179,8 @@ namespace ProjectStructureAnalyzer
             }
             catch (Exception ex)
             {
-                // Игнорируем ошибки записи в лог, чтобы не прерывать выполнение
                 Console.WriteLine($"Log error: {ex.Message}");
             }
-        }
-
-        private bool IsSystemFolder(string folderName)
-        {
-            string[] systemFolders = { "bin", "obj", "Debug", "Release", ".vs", "packages" };
-            return systemFolders.Contains(folderName.ToLower());
-        }
-
-        private int CountFiles(ProjectItem item)
-        {
-            if (!item.IsDirectory) return 1;
-
-            int count = 0;
-            foreach (var child in item.Children)
-            {
-                count += CountFiles(child);
-            }
-            return count;
-        }
-
-        private string FormatFileSize(long bytes)
-        {
-            if (bytes < 1024) return $"{bytes} B";
-            if (bytes < 1024 * 1024) return $"{bytes / 1024} KB";
-            if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024 * 1024)} MB";
-            return $"{bytes / (1024 * 1024 * 1024)} GB";
         }
 
         private void UpdateStatistics()
@@ -186,24 +188,39 @@ namespace ProjectStructureAnalyzer
             if (projectItems.Count > 0)
             {
                 var totalFiles = CountFiles(projectItems[0]);
-                var totalFolders = CountFolders(projectItems[0]);
+                var totalFolders = CountFolders(projectItems[0]) - 1;
 
                 FileCountText.Text = totalFiles.ToString();
                 FolderCountText.Text = totalFolders.ToString();
             }
         }
 
-        private int CountFolders(ProjectItem item)
+        private int CountFiles(ProjectItem item)
         {
-            if (!item.IsDirectory) return 0;
-
-            int count = 1;
+            int count = item.IsDirectory ? 0 : 1;
             foreach (var child in item.Children)
             {
-                if (child.IsDirectory)
-                    count += CountFolders(child);
+                count += CountFiles(child);
             }
             return count;
+        }
+
+        private int CountFolders(ProjectItem item)
+        {
+            int count = item.IsDirectory ? 1 : 0;
+            foreach (var child in item.Children)
+            {
+                count += CountFolders(child);
+            }
+            return count;
+        }
+
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F2} KB";
+            if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F2} MB";
+            return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
         }
 
         private void TreeViewItem_Selected(object sender, RoutedEventArgs e)
@@ -246,7 +263,7 @@ namespace ProjectStructureAnalyzer
                         }
                     }
 
-                    ExportStatusText.Text = $"Файл структуры сохранен:\n {saveDialog.FileName}";
+                    ExportStatusText.Text = $"Файл структуры сохранен:\n{saveDialog.FileName}";
                     ExportStatusText.Visibility = Visibility.Visible;
                     ExportStatusText.Foreground = new SolidColorBrush(Colors.Green);
                     StatusText.Text = "Экспорт завершен успешно.";
@@ -265,10 +282,10 @@ namespace ProjectStructureAnalyzer
         {
             var indent = new string(' ', level * 2);
             var prefix = item.IsDirectory ? "📁" : "📄";
-            var info = item.IsDirectory ? $" ({item.FileCount} файлов)" : $" ({FormatFileSize(item.Size)})";
-            writer.WriteLine($"{indent}{prefix} {item.Name}{info}");
+            var info = item.IsDirectory ? $"({item.FileCount} файлов)" : $"({FormatFileSize(item.Size)})";
+            writer.WriteLine($"{indent}{prefix} {item.Name} {info}");
 
-            foreach (var child in item.Children)
+            foreach (var child in item.Children.OrderBy(c => !c.IsDirectory).ThenBy(c => c.Name))
             {
                 ExportProjectStructure(writer, child, level + 1);
             }
@@ -277,34 +294,20 @@ namespace ProjectStructureAnalyzer
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             var settingsWindow = new SettingsWindow();
-            settingsWindow.ShowDialog();
+            if (settingsWindow.ShowDialog() == true)
+            {
+                ApplySettings();
+            }
         }
 
         private void ExpandTreeViewItems(ItemsControl itemsControl)
         {
             foreach (var item in itemsControl.Items)
             {
-                if (itemsControl.ItemContainerGenerator.Status != System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+                if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem treeViewItem)
                 {
-                    itemsControl.ItemContainerGenerator.StatusChanged += (s, e) =>
-                    {
-                        if (itemsControl.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
-                        {
-                            if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem treeViewItem)
-                            {
-                                treeViewItem.IsExpanded = true;
-                                ExpandTreeViewItems(treeViewItem);
-                            }
-                        }
-                    };
-                }
-                else
-                {
-                    if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem treeViewItem)
-                    {
-                        treeViewItem.IsExpanded = true;
-                        ExpandTreeViewItems(treeViewItem);
-                    }
+                    treeViewItem.IsExpanded = true;
+                    ExpandTreeViewItems(treeViewItem);
                 }
             }
         }
@@ -314,27 +317,9 @@ namespace ProjectStructureAnalyzer
             item.IsExpanded = true;
             foreach (var subItem in item.Items)
             {
-                if (item.ItemContainerGenerator.Status != System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+                if (item.ItemContainerGenerator.ContainerFromItem(subItem) is TreeViewItem subTreeViewItem)
                 {
-                    item.ItemContainerGenerator.StatusChanged += (s, e) =>
-                    {
-                        if (item.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
-                        {
-                            if (item.ItemContainerGenerator.ContainerFromItem(subItem) is TreeViewItem subTreeViewItem)
-                            {
-                                subTreeViewItem.IsExpanded = true;
-                                ExpandTreeViewItems(subTreeViewItem);
-                            }
-                        }
-                    };
-                }
-                else
-                {
-                    if (item.ItemContainerGenerator.ContainerFromItem(subItem) is TreeViewItem subTreeViewItem)
-                    {
-                        subTreeViewItem.IsExpanded = true;
-                        ExpandTreeViewItems(subTreeViewItem);
-                    }
+                    ExpandTreeViewItems(subTreeViewItem);
                 }
             }
         }
@@ -362,7 +347,6 @@ namespace ProjectStructureAnalyzer
         {
             this.Close();
         }
-
     }
 
     // Конвертер для отображения иконок
@@ -381,6 +365,7 @@ namespace ProjectStructureAnalyzer
         }
     }
 
+    // --- ИЗМЕНЕНО: Возвращены недостающие свойства ---
     public class ProjectItem
     {
         public string Name { get; set; } = string.Empty;
@@ -390,7 +375,7 @@ namespace ProjectStructureAnalyzer
         public string Extension { get; set; } = string.Empty;
         public int FileCount { get; set; }
         public ObservableCollection<ProjectItem> Children { get; set; } = new ObservableCollection<ProjectItem>();
-        public bool IsUserFolder { get; set; }
-        public bool IsExpanded { get; set; } // Для управления состоянием развертывания
+        public bool IsUserFolder { get; set; } // <-- ВОЗВРАЩЕНО
+        public bool IsExpanded { get; set; }   // <-- ВОЗВРАЩЕНО
     }
 }
