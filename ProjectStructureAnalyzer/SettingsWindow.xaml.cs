@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ProjectStructureAnalyzer
@@ -17,115 +17,133 @@ namespace ProjectStructureAnalyzer
 
         private void LoadSettings()
         {
-            // Загрузка фильтров
-            var folderExclusions = (Properties.Settings.Default.FolderFilters ?? "").Split(',');
-            var fileExclusions = (Properties.Settings.Default.FileFilters ?? "").Split(',');
-
-            FolderSrcCheckBox.IsChecked = folderExclusions.Contains("src");
-            FolderBinCheckBox.IsChecked = folderExclusions.Contains("bin");
-            FolderObjCheckBox.IsChecked = folderExclusions.Contains("obj");
-            FolderPropertiesCheckBox.IsChecked = folderExclusions.Contains("Properties");
-
-            FileCsCheckBox.IsChecked = fileExclusions.Contains(".cs");
-            FileSlnCheckBox.IsChecked = fileExclusions.Contains(".sln");
-            FileCsprojCheckBox.IsChecked = fileExclusions.Contains(".csproj");
-            FileConfigCheckBox.IsChecked = fileExclusions.Contains(".config");
-
-            // Загрузка и настройка шрифта
-            FontComboBox.ItemsSource = Fonts.SystemFontFamilies.OrderBy(f => f.Source);
-            string savedFont = Properties.Settings.Default.ApplicationFontFamily;
-            if (!string.IsNullOrEmpty(savedFont))
+            try
             {
-                FontComboBox.SelectedItem = new FontFamily(savedFont);
-            }
-            if (FontComboBox.SelectedItem == null)
-            {
-                FontComboBox.SelectedItem = new FontFamily("Segoe UI");
-            }
+                // Загрузка шрифта
+                var fontFamily = new FontFamily(Properties.Settings.Default.ApplicationFontFamily ?? "Segoe UI");
+                FontComboBox.ItemsSource = Fonts.SystemFontFamilies.OrderBy(f => f.Source);
+                FontComboBox.SelectedItem = Fonts.SystemFontFamilies.FirstOrDefault(f => f.Source == fontFamily.Source) ?? Fonts.SystemFontFamilies.First(f => f.Source == "Segoe UI");
 
-            // Загрузка и настройка размера шрифта
-            int savedSize = Properties.Settings.Default.ApplicationFontSize;
-            if (savedSize > 0)
-            {
-                FontSizeSlider.Value = savedSize;
-            }
-            else
-            {
-                FontSizeSlider.Value = 13;
-            }
+                // Загрузка размера шрифта
+                FontSizeSlider.Value = Properties.Settings.Default.ApplicationFontSize > 0 ? Properties.Settings.Default.ApplicationFontSize : 13; // int
 
-            UpdatePreview();
+                // Загрузка фильтров
+                var folderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                FolderSrcCheckBox.IsChecked = folderFilters.Contains("src", StringComparer.OrdinalIgnoreCase);
+                FolderBinCheckBox.IsChecked = folderFilters.Contains("bin", StringComparer.OrdinalIgnoreCase);
+                FolderObjCheckBox.IsChecked = folderFilters.Contains("obj", StringComparer.OrdinalIgnoreCase);
+                FolderPropertiesCheckBox.IsChecked = folderFilters.Contains("Properties", StringComparer.OrdinalIgnoreCase);
+
+                var fileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                FileCsCheckBox.IsChecked = fileFilters.Contains(".cs", StringComparer.OrdinalIgnoreCase);
+                FileSlnCheckBox.IsChecked = fileFilters.Contains(".sln", StringComparer.OrdinalIgnoreCase);
+                FileCsprojCheckBox.IsChecked = fileFilters.Contains(".csproj", StringComparer.OrdinalIgnoreCase);
+                FileConfigCheckBox.IsChecked = fileFilters.Contains(".config", StringComparer.OrdinalIgnoreCase);
+
+                PreviewSettingsChanged(null, null); // Обновление предпросмотра
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error loading settings", ex);
+                System.Windows.MessageBox.Show("Ошибка при загрузке настроек.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // Сохранение фильтров
-            var folderExclusions = new List<string>();
-            if (FolderSrcCheckBox.IsChecked == true) folderExclusions.Add("src");
-            if (FolderBinCheckBox.IsChecked == true) folderExclusions.Add("bin");
-            if (FolderObjCheckBox.IsChecked == true) folderExclusions.Add("obj");
-            if (FolderPropertiesCheckBox.IsChecked == true) folderExclusions.Add("Properties");
-            Properties.Settings.Default.FolderFilters = string.Join(",", folderExclusions);
-
-            var fileExclusions = new List<string>();
-            if (FileCsCheckBox.IsChecked == true) fileExclusions.Add(".cs");
-            if (FileSlnCheckBox.IsChecked == true) fileExclusions.Add(".sln");
-            if (FileCsprojCheckBox.IsChecked == true) fileExclusions.Add(".csproj");
-            if (FileConfigCheckBox.IsChecked == true) fileExclusions.Add(".config");
-            Properties.Settings.Default.FileFilters = string.Join(",", fileExclusions);
-
-            // Сохранение семейства шрифта
-            if (FontComboBox.SelectedItem is FontFamily selectedFont)
+            try
             {
-                Properties.Settings.Default.ApplicationFontFamily = selectedFont.Source;
+                // Сохранение шрифта
+                if (FontComboBox.SelectedItem is FontFamily fontFamily)
+                {
+                    Properties.Settings.Default.ApplicationFontFamily = fontFamily.Source;
+                }
+
+                // Сохранение размера шрифта
+                Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value; // Приведение к int
+
+                // Сохранение фильтров папок
+                var folderFilters = new[] { FolderSrcCheckBox, FolderBinCheckBox, FolderObjCheckBox, FolderPropertiesCheckBox }
+                    .Where(cb => cb.IsChecked == true)
+                    .Select(cb => cb.Content.ToString())
+                    .ToArray();
+                Properties.Settings.Default.FolderFilters = string.Join(",", folderFilters);
+
+                // Сохранение фильтров файлов
+                var fileFilters = new[] { FileCsCheckBox, FileSlnCheckBox, FileCsprojCheckBox, FileConfigCheckBox }
+                    .Where(cb => cb.IsChecked == true)
+                    .Select(cb => cb.Content.ToString())
+                    .ToArray();
+                Properties.Settings.Default.FileFilters = string.Join(",", fileFilters);
+
+                Properties.Settings.Default.Save();
+                Logger.LogInfo("Settings saved successfully.");
+                DialogResult = true;
+                Close();
             }
-
-            // Сохранение размера шрифта
-            Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value;
-
-            Properties.Settings.Default.Save();
-            this.DialogResult = true;
-            this.Close();
+            catch (Exception ex)
+            {
+                Logger.LogError("Error saving settings", ex);
+                System.Windows.MessageBox.Show("Ошибка при сохранении настроек.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            this.DialogResult = false;
-            this.Close();
+            DialogResult = false;
+            Close();
         }
 
-        private void PreviewSettingsChanged(object sender, RoutedEventArgs e)
+        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            UpdatePreview();
-        }
-
-        private void UpdatePreview()
-        {
-            if (FontComboBox == null || FontSizeSlider == null || PreviewTextBlock == null)
-            {
-                return;
-            }
-
-            if (FontComboBox.SelectedItem is FontFamily selectedFont)
-            {
-                PreviewTextBlock.FontFamily = selectedFont;
-                PreviewTextBlock.FontSize = FontSizeSlider.Value;
-            }
-        }
-
-        #region Custom Title Bar Methods
-        private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
-            {
-                this.DragMove();
-            }
+            if (e.ChangedButton == MouseButton.Left)
+                DragMove();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            DialogResult = false;
+            Close();
         }
-        #endregion
+
+        private void PreviewSettingsChanged(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (FontComboBox.SelectedItem is FontFamily fontFamily)
+                {
+                    PreviewTextBlock.FontFamily = fontFamily;
+                }
+                PreviewTextBlock.FontSize = FontSizeSlider.Value; // double для UI
+            }
+            catch
+            {
+                // Игнорируем ошибки предпросмотра
+            }
+        }
+
+        public bool SaveSettings(string fontFamily, double fontSize, string folderFilters, string fileFilters)
+        {
+            try
+            {
+                Properties.Settings.Default.ApplicationFontFamily = fontFamily;
+                if (fontSize > 0)
+                {
+                    Properties.Settings.Default.ApplicationFontSize = (int)fontSize; // Приведение к int
+                }
+                else
+                {
+                    return false;
+                }
+                Properties.Settings.Default.FolderFilters = folderFilters;
+                Properties.Settings.Default.FileFilters = fileFilters;
+                Properties.Settings.Default.Save();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

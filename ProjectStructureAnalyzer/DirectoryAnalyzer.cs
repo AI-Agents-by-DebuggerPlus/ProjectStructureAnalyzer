@@ -1,148 +1,150 @@
 ﻿using System;
-using System.Collections.Generic; // ДОБАВЛЕНО для HashSet
-using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace ProjectStructureAnalyzer
 {
     public class DirectoryAnalyzer
     {
-        private readonly string logFilePath = "structure_log.txt";
-
-        public async Task<ProjectItem> AnalyzeDirectoryAsync(string path, string selectedPath)
+        public async Task<ProjectItem> AnalyzeDirectoryAsync(string path, string rootPath)
         {
-            var dirInfo = new DirectoryInfo(path);
-            var item = new ProjectItem
-            {
-                Name = dirInfo.Name,
-                FullPath = path,
-                IsDirectory = true,
-                Children = new ObservableCollection<ProjectItem>(),
-                IsUserFolder = !IsSystemFolder(dirInfo.Name)
-            };
-
-            // --- ИЗМЕНЕНО: Исправлено чтение настроек фильтров ---
-            var folderExclusions = (Properties.Settings.Default.FolderFilters ?? "")
-                .Split(',')
-                .Where(f => !string.IsNullOrEmpty(f))
-                .ToHashSet(); // HashSet для более быстрой проверки
-
-            var fileExclusions = (Properties.Settings.Default.FileFilters ?? "")
-                .Split(',')
-                .Where(f => !string.IsNullOrEmpty(f))
-                .ToHashSet();
-            // --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
-            Log($"Analyzing directory: {path}");
-
             try
             {
-                // Анализируем все дочерние папки, исключая те, что в folderExclusions
-                foreach (var dir in dirInfo.GetDirectories().Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden)))
+                var dirInfo = new DirectoryInfo(path);
+                if (!dirInfo.Exists)
                 {
-                    Log($"Checking folder: {dir.Name}");
-                    if (!folderExclusions.Contains(dir.Name))
+                    Logger.LogError($"Directory does not exist: {path}", null);
+                    return null;
+                }
+
+                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                if (folderFilters.Any(filter => dirInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                {
+                    Logger.LogInfo($"Directory {dirInfo.Name} skipped due to filter.");
+                    return null;
+                }
+
+                var item = new ProjectItem
+                {
+                    Name = dirInfo.Name,
+                    FullPath = dirInfo.FullName,
+                    IsDirectory = true,
+                    Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>()
+                };
+
+                var children = new ConcurrentBag<ProjectItem>();
+
+                await Task.Run(() =>
+                {
+                    Parallel.ForEach(dirInfo.GetDirectories(), subDir =>
                     {
-                        Log($"Folder {dir.Name} not excluded, analyzing...");
-                        var childItem = await AnalyzeDirectoryAsync(dir.FullName, selectedPath);
+                        var childItem = AnalyzeSubDirectory(subDir, rootPath);
                         if (childItem != null)
                         {
-                            item.Children.Add(childItem);
-                            Log($"Added folder: {dir.Name}");
+                            children.Add(childItem);
+                            item.FileCount += childItem.FileCount;
                         }
-                    }
-                    else
+                    });
+                });
+
+                foreach (var file in dirInfo.GetFiles())
+                {
+                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                    if (fileFilters.Any(filter => file.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
                     {
-                        Log($"Folder {dir.Name} excluded by filter.");
+                        Logger.LogInfo($"File {file.Name} skipped due to filter.");
+                        continue;
                     }
-                }
 
-                // Добавляем файлы, исключая те, что в fileExclusions
-                if (path == selectedPath || !folderExclusions.Contains(dirInfo.Name))
-                {
-                    Log($"Processing files in {dirInfo.Name}");
-                    foreach (var file in dirInfo.GetFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden)))
+                    var fileItem = new ProjectItem
                     {
-                        Log($"Checking file: {file.Name}");
-                        // ИСПРАВЛЕНО: Убрана проверка на fileExclusions.Count, Contains корректно работает с пустым HashSet
-                        if (!fileExclusions.Contains(file.Extension.ToLower()))
-                        {
-                            Log($"File {file.Name} not excluded, adding...");
-                            item.Children.Add(new ProjectItem
-                            {
-                                Name = file.Name,
-                                FullPath = file.FullName,
-                                IsDirectory = false,
-                                Size = file.Length,
-                                Extension = file.Extension.ToLower()
-                            });
-                        }
-                        else
-                        {
-                            Log($"File {file.Name} excluded by filter.");
-                        }
-                    }
-                }
-                else
-                {
-                    Log($"No file processing for {dirInfo.Name} as it is excluded by folder filter.");
+                        Name = file.Name,
+                        FullPath = file.FullName,
+                        IsDirectory = false,
+                        Size = file.Length,
+                        Extension = file.Extension
+                    };
+                    children.Add(fileItem);
+                    item.FileCount++;
                 }
 
-                item.FileCount = CountFiles(item);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                Log($"Unauthorized access to {path}, skipping.");
-                return null;
-            }
+                item.Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>(
+                    children.OrderBy(c => !c.IsDirectory).ThenBy(c => c.Name));
 
-            // Возвращаем item, если он корневой или имеет детей/файлы
-            bool hasChildren = item.Children.Any();
-            bool isExcludedFolder = folderExclusions.Contains(dirInfo.Name);
-            bool hasFiles = item.FileCount > 0;
-            Log($"Evaluation: HasChildren={hasChildren}, IsExcludedFolder={isExcludedFolder}, HasFiles={hasFiles}");
-
-            // Упрощенная логика возврата
-            if (path == selectedPath) return item;
-            if (hasChildren) return item;
-
-            return null;
-        }
-
-        // Вспомогательные методы
-        private void Log(string message)
-        {
-            try
-            {
-                using (StreamWriter writer = File.AppendText(logFilePath))
-                {
-                    writer.WriteLine($"{DateTime.Now}: {message}");
-                }
+                return item.Children.Any() || item.FileCount > 0 ? item : null;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Log error: {ex.Message}");
+                Logger.LogError($"Error analyzing directory: {path}", ex);
+                return null;
             }
         }
 
-        private int CountFiles(ProjectItem node)
+        private ProjectItem AnalyzeSubDirectory(DirectoryInfo dirInfo, string rootPath)
         {
-            if (!node.IsDirectory) return 1;
-
-            int count = 0;
-            foreach (var child in node.Children)
+            try
             {
-                count += CountFiles(child);
-            }
-            return count;
-        }
+                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                if (folderFilters.Any(filter => dirInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                {
+                    Logger.LogInfo($"Directory {dirInfo.Name} skipped due to filter.");
+                    return null;
+                }
 
-        private bool IsSystemFolder(string folderName)
-        {
-            string[] systemFolders = { "bin", "obj", "Debug", "Release", ".vs", "packages" };
-            return systemFolders.Contains(folderName.ToLower());
+                var item = new ProjectItem
+                {
+                    Name = dirInfo.Name,
+                    FullPath = dirInfo.FullName,
+                    IsDirectory = true,
+                    Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>()
+                };
+
+                var children = new ConcurrentBag<ProjectItem>();
+
+                foreach (var subDir in dirInfo.GetDirectories())
+                {
+                    var childItem = AnalyzeSubDirectory(subDir, rootPath);
+                    if (childItem != null)
+                    {
+                        children.Add(childItem);
+                        item.FileCount += childItem.FileCount;
+                    }
+                }
+
+                foreach (var file in dirInfo.GetFiles())
+                {
+                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                    if (fileFilters.Any(filter => file.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Logger.LogInfo($"File {file.Name} skipped due to filter.");
+                        continue;
+                    }
+
+                    var fileItem = new ProjectItem
+                    {
+                        Name = file.Name,
+                        FullPath = file.FullName,
+                        IsDirectory = false,
+                        Size = file.Length,
+                        Extension = file.Extension
+                    };
+                    children.Add(fileItem);
+                    item.FileCount++;
+                }
+
+                item.Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>(
+                    children.OrderBy(c => !c.IsDirectory).ThenBy(c => c.Name));
+
+                return item.Children.Any() || item.FileCount > 0 ? item : null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error analyzing subdirectory: {dirInfo.FullName}", ex);
+                return null;
+            }
         }
     }
 }
