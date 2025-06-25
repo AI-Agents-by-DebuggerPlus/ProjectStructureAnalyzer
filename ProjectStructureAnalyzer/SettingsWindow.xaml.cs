@@ -9,9 +9,12 @@ namespace ProjectStructureAnalyzer
 {
     public partial class SettingsWindow : Window
     {
-        public SettingsWindow()
+        private readonly MainWindow mainWindow;
+
+        public SettingsWindow(MainWindow mainWindow)
         {
             InitializeComponent();
+            this.mainWindow = mainWindow;
             LoadSettings();
         }
 
@@ -80,6 +83,10 @@ namespace ProjectStructureAnalyzer
 
                 Properties.Settings.Default.Save();
                 Logger.LogInfo("Settings saved successfully.");
+
+                // Применение настроек в MainWindow
+                mainWindow.ApplySettings();
+
                 DialogResult = true;
                 Close();
             }
@@ -140,6 +147,7 @@ namespace ProjectStructureAnalyzer
                 Properties.Settings.Default.FolderFilters = folderFilters;
                 Properties.Settings.Default.FileFilters = fileFilters;
                 Properties.Settings.Default.Save();
+                mainWindow.ApplySettings();
                 return true;
             }
             catch

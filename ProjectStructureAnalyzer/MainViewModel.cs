@@ -208,10 +208,15 @@ namespace ProjectStructureAnalyzer
 
         private void Settings()
         {
-            var settingsWindow = new SettingsWindow();
-            if (settingsWindow.ShowDialog() == true)
+            if (System.Windows.Application.Current.MainWindow is MainWindow mainWindow)
             {
-                // Применение настроек в MainWindow.xaml.cs
+                var settingsWindow = new SettingsWindow(mainWindow);
+                settingsWindow.ShowDialog();
+            }
+            else
+            {
+                Logger.LogError("MainWindow is not available.", new InvalidOperationException("MainWindow is null."));
+                System.Windows.MessageBox.Show("Ошибка: Главное окно недоступно.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

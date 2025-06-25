@@ -9,18 +9,18 @@ namespace ProjectStructureAnalyzer
 {
     public class DirectoryAnalyzer
     {
-        public async Task<ProjectItem> AnalyzeDirectoryAsync(string path, string rootPath)
+        public async Task<ProjectItem?> AnalyzeDirectoryAsync(string path, string rootPath)
         {
             try
             {
                 var dirInfo = new DirectoryInfo(path);
                 if (!dirInfo.Exists)
                 {
-                    Logger.LogError($"Directory does not exist: {path}", null);
+                    Logger.LogError($"Directory does not exist: {path}", new DirectoryNotFoundException($"Directory not found: {path}"));
                     return null;
                 }
 
-                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
                 if (folderFilters.Any(filter => dirInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
                 {
                     Logger.LogInfo($"Directory {dirInfo.Name} skipped due to filter.");
@@ -52,7 +52,7 @@ namespace ProjectStructureAnalyzer
 
                 foreach (var file in dirInfo.GetFiles())
                 {
-                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
                     if (fileFilters.Any(filter => file.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
                     {
                         Logger.LogInfo($"File {file.Name} skipped due to filter.");
@@ -83,11 +83,11 @@ namespace ProjectStructureAnalyzer
             }
         }
 
-        private ProjectItem AnalyzeSubDirectory(DirectoryInfo dirInfo, string rootPath)
+        private ProjectItem? AnalyzeSubDirectory(DirectoryInfo dirInfo, string rootPath)
         {
             try
             {
-                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
                 if (folderFilters.Any(filter => dirInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
                 {
                     Logger.LogInfo($"Directory {dirInfo.Name} skipped due to filter.");
@@ -116,7 +116,7 @@ namespace ProjectStructureAnalyzer
 
                 foreach (var file in dirInfo.GetFiles())
                 {
-                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
                     if (fileFilters.Any(filter => file.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
                     {
                         Logger.LogInfo($"File {file.Name} skipped due to filter.");

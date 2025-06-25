@@ -20,7 +20,7 @@ namespace ProjectStructureAnalyzer
             ApplySettings();
         }
 
-        private void ApplySettings()
+        public void ApplySettings()
         {
             Logger.LogInfo("--- Applying settings on MainWindow ---");
             try

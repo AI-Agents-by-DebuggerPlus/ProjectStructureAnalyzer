@@ -5,23 +5,21 @@ namespace ProjectStructureAnalyzer
 {
     public static class Logger
     {
-        private static string logFilePath = "error_log.txt";
+        private static readonly string LogFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error_log.txt");
 
-        public static void SetLogFilePath(string path)
-        {
-            logFilePath = path;
-        }
-
-        public static void LogError(string message, Exception ex)
+        public static void ClearLogFile()
         {
             try
             {
-                string logMessage = $"{DateTime.Now}: ERROR - {message}\n{ex?.ToString()}\n";
-                File.AppendAllText(logFilePath, logMessage);
+                if (File.Exists(LogFilePath))
+                {
+                    File.WriteAllText(LogFilePath, string.Empty);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // Игнорируем ошибки логирования
+                // Игнорируем ошибки очистки файла логов
+                Console.WriteLine($"Error clearing log file: {ex.Message}");
             }
         }
 
@@ -29,24 +27,25 @@ namespace ProjectStructureAnalyzer
         {
             try
             {
-                string logMessage = $"{DateTime.Now}: INFO - {message}\n";
-                File.AppendAllText(logFilePath, logMessage);
+                string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [INFO] {message}\n";
+                File.AppendAllText(LogFilePath, logEntry);
             }
             catch
             {
-                // Игнорируем ошибки логирования
+                // Игнорируем ошибки записи лога
             }
         }
 
-        public static void ClearLogFile()
+        public static void LogError(string message, Exception ex)
         {
             try
             {
-                File.WriteAllText(logFilePath, string.Empty);
+                string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [ERROR] {message}\n{ex.ToString()}\n\n";
+                File.AppendAllText(LogFilePath, logEntry);
             }
             catch
             {
-                // Игнорируем ошибки
+                // Игнорируем ошибки записи лога
             }
         }
     }
