@@ -84,36 +84,44 @@
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Шрифт приложения:" VerticalAlignment="Center" Margin="0,5,10,5"/>
+
                         <ComboBox x:Name="FontComboBox"
                                   Grid.Row="0" Grid.Column="1"
                                   Margin="0,5,0,10"
-                                  ItemContainerStyle="{DynamicResource DarkComboBoxItemStyle}"
-                                  SelectionChanged="PreviewSettingsChanged"/>
+                                  SelectionChanged="PreviewSettingsChanged">
+                            <ComboBox.Resources>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="Background" Value="White"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FFE0E0E0"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#FFD0D0D0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.Resources>
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Source}" 
+                                               FontFamily="{Binding}"
+                                               FontSize="14"
+                                               Foreground="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=ComboBoxItem}}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Размер шрифта:" VerticalAlignment="Center" Margin="0,5,10,5"/>
-
-                        <Grid Grid.Row="1" Grid.Column="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <Slider x:Name="FontSizeSlider" 
-                                    Grid.Column="0"
-                                    Minimum="10" Maximum="24"
-                                    Value="13"
-                                    TickFrequency="1"
-                                    IsSnapToTickEnabled="True"
-                                    ValueChanged="PreviewSettingsChanged"
-                                    VerticalAlignment="Center"/>
-
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding ElementName=FontSizeSlider, Path=Value, StringFormat={}{0:F0} пт}"
-                                       Width="40"
-                                       TextAlignment="Right"
-                                       Margin="10,0,0,0"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
+                        <Slider x:Name="FontSizeSlider" 
+                                Grid.Row="1" Grid.Column="1"
+                                Minimum="10" Maximum="24"
+                                Value="13"
+                                TickFrequency="1"
+                                IsSnapToTickEnabled="True"
+                                ValueChanged="PreviewSettingsChanged"
+                                VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
