@@ -52,6 +52,8 @@
                             <CheckBox x:Name="FolderBinCheckBox" Content="bin" Margin="5,0,0,5"/>
                             <CheckBox x:Name="FolderObjCheckBox" Content="obj" Margin="5,0,0,5"/>
                             <CheckBox x:Name="FolderPropertiesCheckBox" Content="Properties" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FolderVsCheckBox" Content=".vs" Margin="5,0,0,5"/>
+                            <CheckBox x:Name="FolderGitCheckBox" Content=".git" Margin="5,0,0,5"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="Файлы:" Margin="0,0,0,5"/>
@@ -81,12 +83,13 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Шрифт приложения:" VerticalAlignment="Center" Margin="0,5,10,5"/>
 
                         <ComboBox x:Name="FontComboBox"
-                                  Grid.Row="0" Grid.Column="1"
+                                  Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
                                   Margin="0,5,0,10"
                                   SelectionChanged="PreviewSettingsChanged">
                             <ComboBox.Resources>
@@ -122,6 +125,8 @@
                                 IsSnapToTickEnabled="True"
                                 ValueChanged="PreviewSettingsChanged"
                                 VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Value, ElementName=FontSizeSlider}" 
+                                   VerticalAlignment="Center" Margin="10,5,0,5"/>
                     </Grid>
                 </StackPanel>
             </ScrollViewer>

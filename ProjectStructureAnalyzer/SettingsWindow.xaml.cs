@@ -25,7 +25,7 @@ namespace ProjectStructureAnalyzer
                 FontComboBox.SelectedItem = Fonts.SystemFontFamilies.FirstOrDefault(f => f.Source == fontFamily.Source) ?? Fonts.SystemFontFamilies.First(f => f.Source == "Segoe UI");
 
                 // Загрузка размера шрифта
-                FontSizeSlider.Value = Properties.Settings.Default.ApplicationFontSize > 0 ? Properties.Settings.Default.ApplicationFontSize : 13; // int
+                FontSizeSlider.Value = Properties.Settings.Default.ApplicationFontSize > 0 ? Properties.Settings.Default.ApplicationFontSize : 13;
 
                 // Загрузка фильтров
                 var folderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
@@ -33,6 +33,8 @@ namespace ProjectStructureAnalyzer
                 FolderBinCheckBox.IsChecked = folderFilters.Contains("bin", StringComparer.OrdinalIgnoreCase);
                 FolderObjCheckBox.IsChecked = folderFilters.Contains("obj", StringComparer.OrdinalIgnoreCase);
                 FolderPropertiesCheckBox.IsChecked = folderFilters.Contains("Properties", StringComparer.OrdinalIgnoreCase);
+                FolderVsCheckBox.IsChecked = folderFilters.Contains(".vs", StringComparer.OrdinalIgnoreCase);
+                FolderGitCheckBox.IsChecked = folderFilters.Contains(".git", StringComparer.OrdinalIgnoreCase);
 
                 var fileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
                 FileCsCheckBox.IsChecked = fileFilters.Contains(".cs", StringComparer.OrdinalIgnoreCase);
@@ -60,10 +62,10 @@ namespace ProjectStructureAnalyzer
                 }
 
                 // Сохранение размера шрифта
-                Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value; // Приведение к int
+                Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value;
 
                 // Сохранение фильтров папок
-                var folderFilters = new[] { FolderSrcCheckBox, FolderBinCheckBox, FolderObjCheckBox, FolderPropertiesCheckBox }
+                var folderFilters = new[] { FolderSrcCheckBox, FolderBinCheckBox, FolderObjCheckBox, FolderPropertiesCheckBox, FolderVsCheckBox, FolderGitCheckBox }
                     .Where(cb => cb.IsChecked == true)
                     .Select(cb => cb.Content.ToString())
                     .ToArray();
@@ -114,7 +116,7 @@ namespace ProjectStructureAnalyzer
                 {
                     PreviewTextBlock.FontFamily = fontFamily;
                 }
-                PreviewTextBlock.FontSize = FontSizeSlider.Value; // double для UI
+                PreviewTextBlock.FontSize = FontSizeSlider.Value;
             }
             catch
             {
@@ -129,7 +131,7 @@ namespace ProjectStructureAnalyzer
                 Properties.Settings.Default.ApplicationFontFamily = fontFamily;
                 if (fontSize > 0)
                 {
-                    Properties.Settings.Default.ApplicationFontSize = (int)fontSize; // Приведение к int
+                    Properties.Settings.Default.ApplicationFontSize = (int)fontSize;
                 }
                 else
                 {

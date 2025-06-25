@@ -12,12 +12,13 @@
         <DockPanel>
             <Grid DockPanel.Dock="Top" Height="32" Background="{DynamicResource ControlBackgroundBrush}" MouseDown="TitleBar_MouseDown">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Image Source="pack://application:,,,/Resources/folder.png" Width="20" Height="20" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                <TextBlock Text="Project Structure Analyzer" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="30,0,0,0"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Image Grid.Column="0" Source="pack://application:,,,/Resources/folder.png" Width="20" Height="20" Margin="5,0,5,0" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="Project Structure Analyzer" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,0,0"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Content="_" Width="32" Height="32" Click="Minimize_Click" Style="{DynamicResource TitleBarButtonStyle}"/>
                     <Button Content="□" Width="32" Height="32" Click="MaximizeRestore_Click" Style="{DynamicResource TitleBarButtonStyle}"/>
                     <Button Content="✕" Width="32" Height="32" Click="Close_Click" Style="{DynamicResource TitleBarButtonStyle}" Foreground="Red"/>
