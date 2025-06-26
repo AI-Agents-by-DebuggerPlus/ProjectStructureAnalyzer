@@ -2,22 +2,32 @@
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net6.0-windows</TargetFramework>
+		<LangVersion>12.0</LangVersion>
 		<UseWPF>true</UseWPF>
 		<UseWindowsForms>true</UseWindowsForms>
 		<Nullable>enable</Nullable>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<RootNamespace>ProjectStructureAnalyzer</RootNamespace>
+		<AssemblyName>ProjectStructureAnalyzer</AssemblyName>
+		<ApplicationIcon>Resources\AppIcon.ico</ApplicationIcon>
 	</PropertyGroup>
 	<ItemGroup>
-		<!-- Ресурсы -->
 		<Resource Include="Resources\folder.png" />
+		<Resource Include="Resources\AppIcon.ico" />
+		<Resource Include="Images\file.png" />
 	</ItemGroup>
 	<ItemGroup>
-		<!-- Удаление ссылок на удаленные файлы -->
 		<Compile Remove="Converters\BooleanToImageConverter.cs" />
 		<Compile Remove="Converters\BooleanToVisibilityConverter.cs" />
 	</ItemGroup>
 	<ItemGroup>
-		<!-- Зависимости -->
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Properties\Settings.settings">
+			<Generator>SettingsSingleFileGenerator</Generator>
+			<LastGenOutput>Settings.Designer.cs</LastGenOutput>
+		</None>
+		<AppDesigner Include="Properties\" />
 	</ItemGroup>
 </Project>
