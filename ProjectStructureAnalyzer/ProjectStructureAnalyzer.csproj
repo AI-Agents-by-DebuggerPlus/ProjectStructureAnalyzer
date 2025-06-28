@@ -21,7 +21,14 @@
 		<Compile Remove="Converters\BooleanToVisibilityConverter.cs" />
 	</ItemGroup>
 	<ItemGroup>
+	  <None Remove="Resources\discord.png" />
+	</ItemGroup>
+	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+		<PackageReference Include="Costura.Fody" Version="6.0.0">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="Properties\Settings.settings">
@@ -29,5 +36,10 @@
 			<LastGenOutput>Settings.Designer.cs</LastGenOutput>
 		</None>
 		<AppDesigner Include="Properties\" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Content Include="Resources\discord.png">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
 	</ItemGroup>
 </Project>

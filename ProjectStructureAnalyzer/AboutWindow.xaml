@@ -1,0 +1,103 @@
+﻿<Window x:Class="ProjectStructureAnalyzer.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="О программе" 
+        Height="450" 
+        Width="500" 
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        WindowStyle="None" 
+        AllowsTransparency="True" 
+        Background="Transparent">
+
+    <Border Background="{DynamicResource WindowBackgroundBrush}" 
+            CornerRadius="4" 
+            BorderThickness="1" 
+            BorderBrush="{DynamicResource ControlBorderBrush}">
+        <DockPanel>
+            <!-- Заголовок окна -->
+            <Grid DockPanel.Dock="Top" Height="32" Background="{DynamicResource ControlBackgroundBrush}" MouseDown="TitleBar_MouseDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="0" Source="pack://application:,,,/Resources/folder.png" Width="20" Height="20" Margin="5,0,5,0" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="О программе" FontWeight="Bold" FontSize="14" 
+                          Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                <Button Grid.Column="2" Content="✕" Width="32" Height="32" Click="Close_Click" 
+                        Style="{DynamicResource TitleBarButtonStyle}" Foreground="Red"/>
+            </Grid>
+
+            <!-- Содержимое -->
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Иконка и название приложения -->
+                <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,20">
+                    <TextBlock Text="📂" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                    <TextBlock Text="ProjectStructureAnalyzer" 
+                               FontSize="24" 
+                               FontWeight="Bold" 
+                               Foreground="{DynamicResource TextBrush}"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Версия 1.0.0" 
+                               FontSize="14" 
+                               Foreground="LightGray"
+                               HorizontalAlignment="Center" 
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <!-- Описание -->
+                <TextBlock Grid.Row="1" 
+                           Text="Анализатор структуры проектов для разработчиков"
+                           FontSize="16"
+                           Foreground="{DynamicResource TextBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,20"/>
+
+                <!-- Информация о разработчике -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
+                    <TextBlock Text="Разработчик: " Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Text="Сергей Делеу" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+                </StackPanel>
+
+                <!-- Ссылка на Discord -->
+                <Border Grid.Row="4" 
+                        Background="{DynamicResource AccentBrush}" 
+                        CornerRadius="5" 
+                        Padding="15"
+                        VerticalAlignment="Bottom"
+                        Margin="0,20,0,0">
+                    <StackPanel>
+                        <TextBlock Text="💬 Присоединяйся к сообществу индихакеров!" 
+                                   FontWeight="Bold" 
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,10"/>
+                        <Button Name="DiscordButton"
+                                HorizontalAlignment="Center"
+                                Padding="15,5"
+                                Click="DiscordButton_Click"
+                                Background="White"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                FontWeight="Bold">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="pack://application:,,,/Resources/discord.png" Width="16" Height="16" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Перейти в Discord-канал" VerticalAlignment="Center" Foreground="#FF000000" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </DockPanel>
+    </Border>
+</Window>

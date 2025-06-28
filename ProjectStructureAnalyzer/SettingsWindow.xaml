@@ -4,12 +4,25 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Width="450"
+        Width="800"
+        Height="800"
         WindowStyle="None" 
         AllowsTransparency="True" 
         Background="Transparent" 
         WindowStartupLocation="CenterOwner"
-        SizeToContent="Height">
+        SizeToContent="Manual">
+    <Window.Resources>
+        <!-- Стиль для чекбоксов с динамическим текстом -->
+        <Style x:Key="DarkTextCheckBox" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Стиль для категорийных чекбоксов с цветными иконками -->
+        <Style x:Key="CategoryCheckBox" TargetType="CheckBox" BasedOn="{StaticResource DarkTextCheckBox}">
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+    </Window.Resources>
 
     <Border Background="{DynamicResource WindowBackgroundBrush}"
             BorderBrush="{DynamicResource ControlBorderBrush}"
@@ -23,12 +36,11 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Height="40" Background="Transparent" MouseDown="TitleBar_MouseDown">
-                <TextBlock Text="Настройки"
+                <TextBlock Text="Настройки фильтров"
                            FontSize="16"
                            Margin="15,0,0,0"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource TextBrush}"/>
-
                 <Button x:Name="CloseButton" 
                         Content="✕" 
                         Style="{DynamicResource TitleBarButtonStyle}"
@@ -38,100 +50,194 @@
                         HorizontalAlignment="Right"/>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="15,10">
-                    <TextBlock Text="Исключить из анализа следующие папки и файлы:" FontWeight="Bold" Margin="0,0,0,10"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Папки:" Margin="0,0,0,5"/>
-                            <CheckBox x:Name="FolderSrcCheckBox" Content="src" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FolderBinCheckBox" Content="bin" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FolderObjCheckBox" Content="obj" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FolderPropertiesCheckBox" Content="Properties" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FolderVsCheckBox" Content=".vs" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FolderGitCheckBox" Content=".git" Margin="5,0,0,5"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1">
-                            <TextBlock Text="Файлы:" Margin="0,0,0,5"/>
-                            <CheckBox x:Name="FileCsCheckBox" Content=".cs" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FileSlnCheckBox" Content=".sln" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FileCsprojCheckBox" Content=".csproj" Margin="5,0,0,5"/>
-                            <CheckBox x:Name="FileConfigCheckBox" Content=".config" Margin="5,0,0,5"/>
-                        </StackPanel>
-                    </Grid>
+            <StackPanel Grid.Row="1" Margin="15,10">
+                <!-- Основные категории исключений -->
+                <TextBlock Text="Категории файлов для исключения:" FontWeight="Bold" FontSize="14" Margin="0,0,0,10" Foreground="{DynamicResource TextBrush}"/>
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <CheckBox x:Name="ExcludeSystemFilesCheckBox" Content="🔴 Системные файлы" 
+                                  Style="{StaticResource CategoryCheckBox}"
+                                  Margin="0,0,0,5" Checked="CategoryCheckBox_Changed" Unchecked="CategoryCheckBox_Changed"/>
+                        <CheckBox x:Name="ExcludeBuildFilesCheckBox" Content="🟡 Файлы сборки" 
+                                  Style="{StaticResource CategoryCheckBox}"
+                                  Margin="0,0,0,5" Checked="CategoryCheckBox_Changed" Unchecked="CategoryCheckBox_Changed"/>
+                        <CheckBox x:Name="ExcludeGeneratedFilesCheckBox" Content="🟠 Автогенерируемые" 
+                                  Style="{StaticResource CategoryCheckBox}"
+                                  Margin="0,0,0,5" Checked="CategoryCheckBox_Changed" Unchecked="CategoryCheckBox_Changed"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <CheckBox x:Name="ExcludeConfigFilesCheckBox" Content="⚙️ Конфигурационные" 
+                                  Style="{StaticResource CategoryCheckBox}"
+                                  Margin="0,0,0,5" Checked="CategoryCheckBox_Changed" Unchecked="CategoryCheckBox_Changed"/>
+                        <CheckBox x:Name="ExcludeResourceFilesCheckBox" Content="📦 Ресурсы" 
+                                  Style="{StaticResource CategoryCheckBox}"
+                                  Margin="0,0,0,5" Checked="CategoryCheckBox_Changed" Unchecked="CategoryCheckBox_Changed"/>
+                        <CheckBox x:Name="ExcludeDocumentationCheckBox" Content="📖 Документация" 
+                                  Style="{StaticResource CategoryCheckBox}"
+                                  Margin="0,0,0,5" Checked="CategoryCheckBox_Changed" Unchecked="CategoryCheckBox_Changed"/>
+                    </StackPanel>
+                </Grid>
 
-                    <TextBlock Text="Настройки шрифта" FontWeight="Bold" Margin="0,20,0,10"/>
-                    <Border BorderBrush="{DynamicResource ControlBorderBrush}" 
-                            BorderThickness="1" 
-                            CornerRadius="4" 
-                            Margin="0,0,0,10"
-                            Padding="10">
-                        <TextBlock x:Name="PreviewTextBlock"
-                                   Text="Пример текста. Sample text. 123"
-                                   TextWrapping="Wrap"/>
-                    </Border>
+                <Separator Margin="0,10,0,15"/>
 
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                <!-- Детальные настройки -->
+                <TextBlock Text="Исключить из анализа следующие папки и файлы:" FontWeight="Bold" Margin="0,0,0,10" Foreground="{DynamicResource TextBrush}"/>
+                <TabControl Height="320">
+                    <TabItem Header="Папки">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <Grid Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Системные папки:" FontWeight="SemiBold" Foreground="#FF6B46C1" Margin="0,0,0,5"/>
+                                    <CheckBox x:Name="FolderVsCheckBox" Content=".vs" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderGitCheckBox" Content=".git" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderVscodeCheckBox" Content=".vscode" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderIdeaCheckBox" Content=".idea" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Папки сборки:" FontWeight="SemiBold" Foreground="#FFEA580C" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FolderBinCheckBox" Content="bin" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderObjCheckBox" Content="obj" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderDebugCheckBox" Content="Debug" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderReleaseCheckBox" Content="Release" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Структурные папки:" FontWeight="SemiBold" Foreground="#FF059669" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FolderSrcCheckBox" Content="src" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderPropertiesCheckBox" Content="Properties" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Папки зависимостей:" FontWeight="SemiBold" Foreground="#FF7C3AED" Margin="0,0,0,5"/>
+                                    <CheckBox x:Name="FolderNodeModulesCheckBox" Content="node_modules" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderPackagesCheckBox" Content="packages" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderNugetCheckBox" Content=".nuget" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Папки документации:" FontWeight="SemiBold" Foreground="#FF7C3AED" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FolderDocsCheckBox" Content="docs" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderDocumentationCheckBox" Content="Documentation" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Временные папки:" FontWeight="SemiBold" Foreground="#FFD97706" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FolderTempCheckBox" Content="temp" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderTmpCheckBox" Content="tmp" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FolderCacheCheckBox" Content="cache" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                </StackPanel>
+                            </Grid>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="Файлы по расширению">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <Grid Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Исходный код:" FontWeight="SemiBold" Foreground="#FF059669" Margin="0,0,0,5"/>
+                                    <CheckBox x:Name="FileCsCheckBox" Content=".cs" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileXamlCheckBox" Content=".xaml" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileVbCheckBox" Content=".vb" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Проектные файлы:" FontWeight="SemiBold" Foreground="#FFEA580C" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FileSlnCheckBox" Content=".sln" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileCsprojCheckBox" Content=".csproj" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileVbprojCheckBox" Content=".vbproj" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileFsprojCheckBox" Content=".fsproj" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Конфигурационные:" FontWeight="SemiBold" Foreground="#FF0284C7" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FileConfigCheckBox" Content=".config" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileJsonCheckBox" Content=".json" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileXmlCheckBox" Content=".xml" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileYamlCheckBox" Content=".yaml/.yml" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Автогенерируемые:" FontWeight="SemiBold" Foreground="#FFD97706" Margin="0,0,0,5"/>
+                                    <CheckBox x:Name="FileDesignerCheckBox" Content=".Designer.cs" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileGCsCheckBox" Content=".g.cs" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileGICsCheckBox" Content=".g.i.cs" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileAssemblyInfoCheckBox" Content="AssemblyInfo.cs" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Системные:" FontWeight="SemiBold" Foreground="#FF6B46C1" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FileGitignoreCheckBox" Content=".gitignore" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileGitattributesCheckBox" Content=".gitattributes" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileUserCheckBox" Content=".user" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileSuoCheckBox" Content=".suo" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,8"/>
+                                    <TextBlock Text="Документация:" FontWeight="SemiBold" Foreground="#FF7C3AED" Margin="0,5,0,5"/>
+                                    <CheckBox x:Name="FileMdCheckBox" Content=".md" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileTxtCheckBox" Content=".txt" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                    <CheckBox x:Name="FileReadmeCheckBox" Content="README.*" Style="{StaticResource DarkTextCheckBox}" Margin="15,0,0,3"/>
+                                </StackPanel>
+                            </Grid>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Шрифт приложения:" VerticalAlignment="Center" Margin="0,5,10,5"/>
+                <Separator Margin="0,15,0,15"/>
 
-                        <ComboBox x:Name="FontComboBox"
-                                  Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
-                                  Margin="0,5,0,10"
-                                  SelectionChanged="PreviewSettingsChanged">
-                            <ComboBox.Resources>
-                                <Style TargetType="ComboBoxItem">
-                                    <Setter Property="Background" Value="White"/>
-                                    <Setter Property="Foreground" Value="Black"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#FFE0E0E0"/>
-                                        </Trigger>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#FFD0D0D0"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ComboBox.Resources>
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Source}" 
-                                               FontFamily="{Binding}"
-                                               FontSize="14"
-                                               Foreground="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=ComboBoxItem}}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                <!-- Настройки шрифта -->
+                <TextBlock Text="Настройки шрифта" FontWeight="Bold" Margin="0,0,0,10" Foreground="{DynamicResource TextBrush}"/>
+                <Border BorderBrush="{DynamicResource ControlBorderBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4" 
+                        Margin="0,0,0,10"
+                        Padding="10">
+                    <TextBlock x:Name="PreviewTextBlock"
+                               Text="Пример текста. Sample text. 123"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextBrush}"/>
+                </Border>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Размер шрифта:" VerticalAlignment="Center" Margin="0,5,10,5"/>
-                        <Slider x:Name="FontSizeSlider" 
-                                Grid.Row="1" Grid.Column="1"
-                                Minimum="10" Maximum="24"
-                                Value="13"
-                                TickFrequency="1"
-                                IsSnapToTickEnabled="True"
-                                ValueChanged="PreviewSettingsChanged"
-                                VerticalAlignment="Center"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Value, ElementName=FontSizeSlider}" 
-                                   VerticalAlignment="Center" Margin="10,5,0,5"/>
-                    </Grid>
-                </StackPanel>
-            </ScrollViewer>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Шрифт приложения:" VerticalAlignment="Center" Margin="0,5,10,5" Foreground="{DynamicResource TextBrush}"/>
+                    <ComboBox x:Name="FontComboBox"
+                              Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
+                              Margin="0,5,0,10"
+                              SelectionChanged="PreviewSettingsChanged">
+                        <ComboBox.Resources>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Background" Value="White"/>
+                                <Setter Property="Foreground" Value="Black"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#FFE0E0E0"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#FFD0D0D0"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ComboBox.Resources>
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Source}" 
+                                           FontFamily="{Binding}"
+                                           FontSize="14"
+                                           Foreground="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=ComboBoxItem}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Размер шрифта:" VerticalAlignment="Center" Margin="0,5,10,5" Foreground="{DynamicResource TextBrush}"/>
+                    <Slider x:Name="FontSizeSlider" 
+                            Grid.Row="1" Grid.Column="1"
+                            Minimum="10" Maximum="24"
+                            Value="13"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            ValueChanged="PreviewSettingsChanged"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Value, ElementName=FontSizeSlider}" 
+                               VerticalAlignment="Center" Margin="10,5,0,5" Foreground="{DynamicResource TextBrush}"/>
+                </Grid>
+            </StackPanel>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,15,15">
+                <Button x:Name="ResetButton" Content="Сброс" Click="ResetButton_Click" Width="85" Margin="0,0,10,0"/>
                 <Button x:Name="SaveButton" Content="Сохранить" Click="SaveButton_Click" Width="85" Margin="0,0,10,0"/>
                 <Button x:Name="CancelButton" Content="Отмена" Click="CancelButton_Click" Width="85"/>
             </StackPanel>

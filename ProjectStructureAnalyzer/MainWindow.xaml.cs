@@ -103,5 +103,12 @@ namespace ProjectStructureAnalyzer
         {
             this.Close();
         }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            var aboutWindow = new Views.AboutWindow();
+            aboutWindow.Owner = this;
+            aboutWindow.ShowDialog();
+        }
     }
 }
