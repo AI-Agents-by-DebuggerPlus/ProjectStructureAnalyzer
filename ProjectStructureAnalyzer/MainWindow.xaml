@@ -3,10 +3,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:ProjectStructureAnalyzer"
         xmlns:converters="clr-namespace:ProjectStructureAnalyzer.Converters"
-        Title="Project Structure Analyzer" Height="600" Width="800"
+        Title="Project Structure Analyzer" Height="700" Width="1000"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent">
     <Window.Resources>
         <converters:DirectoryToIconConverter x:Key="DirectoryToIconConverter"/>
+
+        <!-- Стиль для основных кнопок с минимальной шириной и отступами -->
+        <Style x:Key="MainButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="MinWidth" Value="100"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
     </Window.Resources>
     <Border Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="4" BorderThickness="1" BorderBrush="{DynamicResource ControlBorderBrush}">
         <DockPanel>
@@ -21,7 +28,7 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Content="_" Width="32" Height="32" Click="Minimize_Click" Style="{DynamicResource TitleBarButtonStyle}"/>
                     <Button Content="□" Width="32" Height="32" Click="MaximizeRestore_Click" Style="{DynamicResource TitleBarButtonStyle}"/>
-                    <Button Content="✕" Width="32" Height="32" Click="Close_Click" Style="{DynamicResource TitleBarButtonStyle}" Foreground="Red"/>
+                    <Button Content="✕" Width="32" Height="32" Click="Close_Click" Style="{DynamicResource TitleBarButtonStyle}"/>
                 </StackPanel>
             </Grid>
             <DockPanel Margin="10">
@@ -33,13 +40,27 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Button Content="Выбрать папку" Command="{Binding SelectFolderCommand}" Width="120" Margin="0,0,10,0"/>
-                        <Button Content="Анализировать" Command="{Binding AnalyzeCommand}" IsEnabled="{Binding AnalyzeButtonEnabled}" Width="120" Margin="0,0,10,0"/>
-                        <Button Content="Экспорт" Command="{Binding ExportCommand}" IsEnabled="{Binding ExportButtonEnabled}" Width="120" Margin="0,0,10,0"/>
-                        <Button Content="Настройки" Command="{Binding SettingsCommand}" Width="120"/>
+                        <Button Content="Выбрать папку" 
+                                Command="{Binding SelectFolderCommand}" 
+                                Style="{StaticResource MainButtonStyle}"/>
+                        <Button Content="Анализировать" 
+                                Command="{Binding AnalyzeCommand}" 
+                                IsEnabled="{Binding AnalyzeButtonEnabled}" 
+                                Style="{StaticResource MainButtonStyle}"/>
+                        <Button Content="Экспорт" 
+                                Command="{Binding ExportCommand}" 
+                                IsEnabled="{Binding ExportButtonEnabled}" 
+                                Style="{StaticResource MainButtonStyle}"/>
+                        <Button Content="Настройки" 
+                                Command="{Binding SettingsCommand}" 
+                                Style="{StaticResource MainButtonStyle}"
+                                Margin="0"/>
                     </StackPanel>
 
-                    <Button Grid.Column="2" Click="About_Click" Width="140" Padding="5,2">
+                    <Button Grid.Column="2" 
+                            Click="About_Click" 
+                            MinWidth="120" 
+                            Padding="10,5">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="pack://application:,,,/Resources/folder.png" Width="16" Height="16" Margin="0,0,5,0"/>
                             <TextBlock Text="О программе"/>

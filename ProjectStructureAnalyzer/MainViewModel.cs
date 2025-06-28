@@ -26,6 +26,9 @@ namespace ProjectStructureAnalyzer
         private int fileCount;
         private Brush? exportStatusTextForeground;
 
+        // Добавляем событие для отображения подсказки
+        public event Action ShowFolderSelectionHint;
+
         public MainViewModel()
         {
             projectItems = new ObservableCollection<ProjectItem>();
@@ -137,7 +140,16 @@ namespace ProjectStructureAnalyzer
 
         private async Task AnalyzeAsync()
         {
-            if (string.IsNullOrEmpty(SelectedPath) || !Directory.Exists(SelectedPath))
+            // Проверяем, выбрана ли папка
+            if (string.IsNullOrEmpty(SelectedPath))
+            {
+                // Вызываем событие для отображения подсказки
+                ShowFolderSelectionHint?.Invoke();
+                StatusText = "Сначала выберите папку для анализа.";
+                return;
+            }
+
+            if (!Directory.Exists(SelectedPath))
             {
                 System.Windows.MessageBox.Show("Выберите корректную папку для анализа.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
@@ -154,7 +166,7 @@ namespace ProjectStructureAnalyzer
                     ProjectItems.Add(rootItem);
                     UpdateStatistics();
                     ExportButtonEnabled = true;
-                    StatusText = "Анализ завершен успешно.";
+                    StatusText = $"Анализ завершен. Путь: {SelectedPath}";
                 }
                 else
                 {

@@ -1,96 +1,108 @@
-﻿using System;
+﻿using ProjectStructureAnalyzer.Views;
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace ProjectStructureAnalyzer
 {
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly MainViewModel viewModel;
+        private MainViewModel viewModel;
 
         public MainWindow()
         {
             InitializeComponent();
-            Logger.ClearLogFile();
 
+            // Создаем ViewModel и устанавливаем как DataContext
             viewModel = new MainViewModel();
             DataContext = viewModel;
+
+            // Подписываемся на событие показа подсказки
+            viewModel.ShowFolderSelectionHint += OnShowFolderSelectionHint;
+
+            // Применяем сохраненные настройки при запуске
             ApplySettings();
         }
 
-        public void ApplySettings()
+        /// <summary>
+        /// Обработчик события показа подсказки о выборе папки
+        /// </summary>
+        private void OnShowFolderSelectionHint()
         {
-            Logger.LogInfo("--- Applying settings on MainWindow ---");
-            try
-            {
-                string fontFamilyName = Properties.Settings.Default.ApplicationFontFamily;
-                int fontSize = Properties.Settings.Default.ApplicationFontSize;
+            // Показываем подсказку пользователю
+            ShowFolderSelectionHintMessage();
 
-                Logger.LogInfo($"Read settings: FontFamily='{fontFamilyName}', FontSize='{fontSize}'");
-
-                if (!string.IsNullOrEmpty(fontFamilyName))
-                {
-                    this.FontFamily = new FontFamily(fontFamilyName);
-                    Logger.LogInfo($"Applied FontFamily: {fontFamilyName}");
-                }
-                if (fontSize > 0)
-                {
-                    this.FontSize = fontSize;
-                    Logger.LogInfo($"Applied FontSize: {fontSize}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("Error applying settings", ex);
-            }
-            Logger.LogInfo("--- Finished applying settings ---");
+            // Опционально: анимируем кнопку выбора папки
+            AnimateSelectFolderButton();
         }
 
-        private void ExpandTreeViewItems(ItemsControl itemsControl)
+        /// <summary>
+        /// Показывает сообщение-подсказку о необходимости выбрать папку
+        /// </summary>
+        private void ShowFolderSelectionHintMessage()
         {
-            foreach (var item in itemsControl.Items)
-            {
-                if (itemsControl.ItemContainerGenerator.ContainerFromItem(item) is TreeViewItem treeViewItem)
-                {
-                    treeViewItem.IsExpanded = true;
-                    ExpandTreeViewItems(treeViewItem);
-                }
-            }
+            MessageBox.Show(
+                "Пожалуйста, сначала выберите папку для анализа с помощью кнопки 'Выбрать папку'.",
+                "Папка не выбрана",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
         }
 
-        private void ExpandTreeViewItems(TreeViewItem item)
+        /// <summary>
+        /// Анимирует кнопку выбора папки для привлечения внимания
+        /// </summary>
+        private void AnimateSelectFolderButton()
         {
-            item.IsExpanded = true;
-            foreach (var subItem in item.Items)
+            // Найдем кнопку выбора папки (замените имя на актуальное из вашего XAML)
+            if (FindName("SelectFolderButton") is Button selectButton)
             {
-                if (item.ItemContainerGenerator.ContainerFromItem(subItem) is TreeViewItem subTreeViewItem)
+                // Создаем анимацию подсветки
+                var colorAnimation = new ColorAnimation
                 {
-                    ExpandTreeViewItems(subTreeViewItem);
-                }
-            }
-        }
+                    From = Colors.Transparent,
+                    To = Colors.LightBlue,
+                    Duration = TimeSpan.FromMilliseconds(500),
+                    AutoReverse = true,
+                    RepeatBehavior = new RepeatBehavior(2)
+                };
 
-        private void TreeViewItem_Selected(object sender, RoutedEventArgs e)
-        {
-            if (e.OriginalSource is TreeViewItem treeViewItem && treeViewItem.DataContext is ProjectItem selectedItem)
-            {
-                viewModel.StatusText = $"Выбран: {selectedItem.Name}";
+                // Применяем анимацию к фону кнопки
+                var brush = new SolidColorBrush(Colors.Transparent);
+                selectButton.Background = brush;
+                brush.BeginAnimation(SolidColorBrush.ColorProperty, colorAnimation);
             }
         }
 
+        #region Window Management Event Handlers
+
+        /// <summary>
+        /// Обработчик события MouseDown для заголовка окна - позволяет перетаскивать окно
+        /// </summary>
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
                 this.DragMove();
         }
 
+        /// <summary>
+        /// Обработчик кнопки сворачивания окна
+        /// </summary>
         private void Minimize_Click(object sender, RoutedEventArgs e)
         {
             this.WindowState = WindowState.Minimized;
         }
 
+        /// <summary>
+        /// Обработчик кнопки максимизации/восстановления окна
+        /// </summary>
         private void MaximizeRestore_Click(object sender, RoutedEventArgs e)
         {
             if (this.WindowState == WindowState.Maximized)
@@ -99,16 +111,137 @@ namespace ProjectStructureAnalyzer
                 this.WindowState = WindowState.Maximized;
         }
 
+        /// <summary>
+        /// Обработчик кнопки закрытия окна
+        /// </summary>
         private void Close_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
         }
 
+        #endregion
+
+        #region UI Event Handlers
+
+        /// <summary>
+        /// Обработчик кнопки "О программе"
+        /// </summary>
         private void About_Click(object sender, RoutedEventArgs e)
         {
-            var aboutWindow = new Views.AboutWindow();
-            aboutWindow.Owner = this;
+            var aboutWindow = new AboutWindow
+            {
+                Owner = this // Устанавливаем MainWindow как владельца для центрирования
+            };
             aboutWindow.ShowDialog();
+        }
+
+        /// <summary>
+        /// Обработчик выбора элемента в TreeView
+        /// </summary>
+        private void TreeViewItem_Selected(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Получаем выбранный элемент
+                if (sender is TreeViewItem item && item.DataContext is ProjectItem projectItem)
+                {
+                    // Обновляем статус с информацией о выбранном элементе
+                    if (viewModel != null)
+                    {
+                        var itemType = projectItem.IsDirectory ? "Папка" : "Файл";
+                        viewModel.StatusText = $"Выбран: {itemType} - {projectItem.Name}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Логируем ошибку если есть система логирования
+                if (viewModel != null)
+                {
+                    viewModel.StatusText = "Ошибка при выборе элемента";
+                }
+
+                // Можно добавить логирование:
+                // Logger.LogError("Error handling TreeView selection", ex);
+            }
+        }
+
+        #endregion
+
+        #region Settings Management
+
+        /// <summary>
+        /// Применяет сохраненные настройки к окну
+        /// </summary>
+        public void ApplySettings()
+        {
+            try
+            {
+                // Применяем настройки шрифта
+                var fontFamily = Properties.Settings.Default.ApplicationFontFamily;
+                if (!string.IsNullOrEmpty(fontFamily))
+                {
+                    try
+                    {
+                        this.FontFamily = new FontFamily(fontFamily);
+                    }
+                    catch
+                    {
+                        // Если указанный шрифт недоступен, используем шрифт по умолчанию
+                        this.FontFamily = new FontFamily("Segoe UI");
+                    }
+                }
+
+                // Применяем размер шрифта
+                var fontSize = Properties.Settings.Default.ApplicationFontSize;
+                if (fontSize > 0)
+                {
+                    this.FontSize = fontSize;
+                }
+
+                // Если нужно обновить анализ с новыми фильтрами
+                if (viewModel?.ProjectItems?.Any() == true)
+                {
+                    // Можно добавить логику для повторного анализа с новыми настройками фильтров
+                    // Например, если пользователь изменил фильтры и хочет сразу увидеть результат:
+                    // viewModel.AnalyzeCommand?.Execute(null);
+
+                    // Обновляем статус
+                    viewModel.StatusText = "Настройки применены. Для применения новых фильтров выполните повторный анализ.";
+                }
+            }
+            catch (Exception ex)
+            {
+                // Обрабатываем ошибки применения настроек
+                MessageBox.Show($"Ошибка применения настроек: {ex.Message}", "Ошибка",
+                               MessageBoxButton.OK, MessageBoxImage.Error);
+
+                // Можно добавить логирование:
+                // Logger.LogError("Error applying settings", ex);
+            }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Освобождение ресурсов при закрытии окна
+        /// </summary>
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                // Отписываемся от событий для предотвращения утечек памяти
+                if (viewModel != null)
+                {
+                    viewModel.ShowFolderSelectionHint -= OnShowFolderSelectionHint;
+                }
+            }
+            catch
+            {
+                // Игнорируем ошибки при очистке ресурсов
+            }
+
+            base.OnClosed(e);
         }
     }
 }

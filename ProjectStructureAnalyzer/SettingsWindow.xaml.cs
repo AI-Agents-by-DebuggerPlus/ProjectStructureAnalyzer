@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Win32;
 
 namespace ProjectStructureAnalyzer
 {
@@ -15,6 +18,17 @@ namespace ProjectStructureAnalyzer
 
         // Словари для связи категорий с чекбоксами
         private Dictionary<CheckBox, List<CheckBox>> _categoryMappings;
+
+        // Класс для сериализации настроек
+        public class SettingsProfile
+        {
+            public string Name { get; set; } = "";
+            public string FontFamily { get; set; } = "Segoe UI";
+            public int FontSize { get; set; } = 13;
+            public List<string> FolderFilters { get; set; } = new List<string>();
+            public List<string> FileFilters { get; set; } = new List<string>();
+            public DateTime CreatedDate { get; set; } = DateTime.Now;
+        }
 
         public SettingsWindow(MainWindow mainWindow)
         {
@@ -82,7 +96,7 @@ namespace ProjectStructureAnalyzer
                 LoadFileFilters(fileFilters);
 
                 // Обновление состояния категорий
-                UpdateCategoryCheckBoxes();
+                UpdateCategoryCheckBoxes(null, null);
 
                 PreviewSettingsChanged(null, null);
             }
@@ -183,7 +197,7 @@ namespace ProjectStructureAnalyzer
             }
         }
 
-        private void UpdateCategoryCheckBoxes()
+        private void UpdateCategoryCheckBoxes(object sender, RoutedEventArgs e)
         {
             foreach (var mapping in _categoryMappings)
             {
@@ -211,29 +225,7 @@ namespace ProjectStructureAnalyzer
         {
             try
             {
-                // Сохранение шрифта
-                if (FontComboBox.SelectedItem is FontFamily fontFamily)
-                {
-                    Properties.Settings.Default.ApplicationFontFamily = fontFamily.Source;
-                }
-
-                // Сохранение размера шрифта
-                Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value;
-
-                // Сохранение фильтров папок
-                var folderFilters = GetSelectedFolderFilters();
-                Properties.Settings.Default.FolderFilters = string.Join(",", folderFilters);
-
-                // Сохранение фильтров файлов
-                var fileFilters = GetSelectedFileFilters();
-                Properties.Settings.Default.FileFilters = string.Join(",", fileFilters);
-
-                Properties.Settings.Default.Save();
-                Logger.LogInfo("Settings saved successfully.");
-
-                // Применение настроек в MainWindow
-                mainWindow.ApplySettings();
-
+                SaveCurrentSettings();
                 DialogResult = true;
                 Close();
             }
@@ -242,6 +234,208 @@ namespace ProjectStructureAnalyzer
                 Logger.LogError("Error saving settings", ex);
                 MessageBox.Show("Ошибка при сохранении настроек.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void SaveAsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Title = "Сохранить профиль настроек как...",
+                    Filter = "Файлы профилей настроек (*.json)|*.json|Все файлы (*.*)|*.*",
+                    DefaultExt = "json",
+                    AddExtension = true,
+                    InitialDirectory = GetProfilesDirectory()
+                };
+
+                if (dialog.ShowDialog() == true)
+                {
+                    var profile = CreateCurrentProfile();
+                    profile.Name = Path.GetFileNameWithoutExtension(dialog.FileName);
+
+                    var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(dialog.FileName, json);
+
+                    Logger.LogInfo($"Settings profile saved to: {dialog.FileName}");
+                    MessageBox.Show($"Профиль настроек сохранен как '{profile.Name}'", "Сохранение",
+                                  MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error saving settings profile", ex);
+                MessageBox.Show("Ошибка при сохранении профиля настроек.", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void SaveAsDefaultButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "Сохранить текущие настройки как настройки по умолчанию?\n\n" +
+                    "Эти настройки будут автоматически применяться при запуске приложения.",
+                    "Сохранить как настройки по умолчанию",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    var profile = CreateCurrentProfile();
+                    profile.Name = "Default Settings";
+
+                    var defaultProfilePath = Path.Combine(GetProfilesDirectory(), "default.json");
+                    var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(defaultProfilePath, json);
+
+                    // Также сохраняем в обычные настройки
+                    SaveCurrentSettings();
+
+                    Logger.LogInfo("Default settings profile saved");
+                    MessageBox.Show("Настройки сохранены как настройки по умолчанию", "Сохранение",
+                                  MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error saving default settings", ex);
+                MessageBox.Show("Ошибка при сохранении настроек по умолчанию.", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void LoadProfileButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Title = "Загрузить профиль настроек",
+                    Filter = "Файлы профилей настроек (*.json)|*.json|Все файлы (*.*)|*.*",
+                    InitialDirectory = GetProfilesDirectory()
+                };
+
+                if (dialog.ShowDialog() == true)
+                {
+                    var json = File.ReadAllText(dialog.FileName);
+                    var profile = JsonSerializer.Deserialize<SettingsProfile>(json);
+
+                    if (profile != null)
+                    {
+                        ApplyProfile(profile);
+                        Logger.LogInfo($"Settings profile loaded from: {dialog.FileName}");
+                        MessageBox.Show($"Профиль настроек '{profile.Name}' загружен", "Загрузка",
+                                      MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error loading settings profile", ex);
+                MessageBox.Show("Ошибка при загрузке профиля настроек.", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private SettingsProfile CreateCurrentProfile()
+        {
+            return new SettingsProfile
+            {
+                FontFamily = (FontComboBox.SelectedItem as FontFamily)?.Source ?? "Segoe UI",
+                FontSize = (int)FontSizeSlider.Value,
+                FolderFilters = GetSelectedFolderFilters(),
+                FileFilters = GetSelectedFileFilters()
+            };
+        }
+
+        private void ApplyProfile(SettingsProfile profile)
+        {
+            _isLoading = true;
+            try
+            {
+                // Применяем шрифт
+                var fontFamily = Fonts.SystemFontFamilies.FirstOrDefault(f => f.Source == profile.FontFamily) ??
+                               Fonts.SystemFontFamilies.First(f => f.Source == "Segoe UI");
+                FontComboBox.SelectedItem = fontFamily;
+                FontSizeSlider.Value = Math.Max(10, Math.Min(24, profile.FontSize));
+
+                // Применяем фильтры
+                LoadFolderFilters(profile.FolderFilters.ToArray());
+                LoadFileFilters(profile.FileFilters.ToArray());
+
+                UpdateCategoryCheckBoxes(null, null);
+                PreviewSettingsChanged(null, null);
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+
+        private string GetProfilesDirectory()
+        {
+            var exePath = AppDomain.CurrentDomain.BaseDirectory;
+            var profilesDir = Path.Combine(exePath, "Settings");
+            Directory.CreateDirectory(profilesDir);
+            return profilesDir;
+        }
+
+        public static void LoadDefaultSettingsIfExists()
+        {
+            try
+            {
+                var exePath = AppDomain.CurrentDomain.BaseDirectory;
+                var defaultProfilePath = Path.Combine(exePath, "Settings", "default.json");
+
+                if (File.Exists(defaultProfilePath))
+                {
+                    var json = File.ReadAllText(defaultProfilePath);
+                    var profile = JsonSerializer.Deserialize<SettingsProfile>(json);
+
+                    if (profile != null)
+                    {
+                        Properties.Settings.Default.ApplicationFontFamily = profile.FontFamily;
+                        Properties.Settings.Default.ApplicationFontSize = profile.FontSize;
+                        Properties.Settings.Default.FolderFilters = string.Join(",", profile.FolderFilters);
+                        Properties.Settings.Default.FileFilters = string.Join(",", profile.FileFilters);
+                        Properties.Settings.Default.Save();
+
+                        Logger.LogInfo("Default settings loaded successfully");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error loading default settings", ex);
+            }
+        }
+
+        private void SaveCurrentSettings()
+        {
+            // Сохранение шрифта
+            if (FontComboBox.SelectedItem is FontFamily fontFamily)
+            {
+                Properties.Settings.Default.ApplicationFontFamily = fontFamily.Source;
+            }
+
+            // Сохранение размера шрифта
+            Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value;
+
+            // Сохранение фильтров папок
+            var folderFilters = GetSelectedFolderFilters();
+            Properties.Settings.Default.FolderFilters = string.Join(",", folderFilters);
+
+            // Сохранение фильтров файлов
+            var fileFilters = GetSelectedFileFilters();
+            Properties.Settings.Default.FileFilters = string.Join(",", fileFilters);
+
+            Properties.Settings.Default.Save();
+            Logger.LogInfo("Settings saved successfully.");
+
+            // Применение настроек в MainWindow
+            mainWindow.ApplySettings();
         }
 
         private List<string> GetSelectedFolderFilters()
@@ -370,7 +564,7 @@ namespace ProjectStructureAnalyzer
                 FontComboBox.SelectedItem = Fonts.SystemFontFamilies.First(f => f.Source == "Segoe UI");
                 FontSizeSlider.Value = 13;
 
-                UpdateCategoryCheckBoxes();
+                UpdateCategoryCheckBoxes(null, null);
                 PreviewSettingsChanged(null, null);
             }
             finally
