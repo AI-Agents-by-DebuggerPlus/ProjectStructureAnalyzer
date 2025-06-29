@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,140 +8,75 @@ namespace ProjectStructureAnalyzer
 {
     public class DirectoryAnalyzer
     {
-        public async Task<ProjectItem?> AnalyzeDirectoryAsync(string path, string rootPath)
+        public List<string> FolderFilters { get; set; } = new List<string>();
+        public List<string> FileFilters { get; set; } = new List<string>();
+
+        public async Task<ProjectItem> AnalyzeDirectoryAsync(string path, string rootPath)
         {
-            try
+            var item = new ProjectItem
             {
-                var dirInfo = new DirectoryInfo(path);
-                if (!dirInfo.Exists)
-                {
-                    Logger.LogError($"Directory does not exist: {path}", new DirectoryNotFoundException($"Directory not found: {path}"));
-                    return null;
-                }
+                Name = Path.GetFileName(path),
+                FullPath = path,
+                IsDirectory = true,
+                Size = 0,
+                Extension = string.Empty,
+                FileCount = 0
+            };
 
-                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-                if (folderFilters.Any(filter => dirInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
-                {
-                    Logger.LogInfo($"Directory {dirInfo.Name} skipped due to filter.");
-                    return null;
-                }
-
-                var item = new ProjectItem
-                {
-                    Name = dirInfo.Name,
-                    FullPath = dirInfo.FullName,
-                    IsDirectory = true,
-                    Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>()
-                };
-
-                var children = new ConcurrentBag<ProjectItem>();
-
-                await Task.Run(() =>
-                {
-                    Parallel.ForEach(dirInfo.GetDirectories(), subDir =>
-                    {
-                        var childItem = AnalyzeSubDirectory(subDir, rootPath);
-                        if (childItem != null)
-                        {
-                            children.Add(childItem);
-                            item.FileCount += childItem.FileCount;
-                        }
-                    });
-                });
-
-                foreach (var file in dirInfo.GetFiles())
-                {
-                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-                    if (fileFilters.Any(filter => file.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        Logger.LogInfo($"File {file.Name} skipped due to filter.");
-                        continue;
-                    }
-
-                    var fileItem = new ProjectItem
-                    {
-                        Name = file.Name,
-                        FullPath = file.FullName,
-                        IsDirectory = false,
-                        Size = file.Length,
-                        Extension = file.Extension
-                    };
-                    children.Add(fileItem);
-                    item.FileCount++;
-                }
-
-                item.Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>(
-                    children.OrderBy(c => !c.IsDirectory).ThenBy(c => c.Name));
-
-                return item.Children.Any() || item.FileCount > 0 ? item : null;
-            }
-            catch (Exception ex)
+            // Проверяем, нужно ли пропустить папку
+            if (FolderFilters.Any(f => path.Contains(f, StringComparison.OrdinalIgnoreCase)))
             {
-                Logger.LogError($"Error analyzing directory: {path}", ex);
+                Logger.LogInfo($"Directory {path} skipped due to filter.");
                 return null;
             }
-        }
 
-        private ProjectItem? AnalyzeSubDirectory(DirectoryInfo dirInfo, string rootPath)
-        {
             try
             {
-                string[] folderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-                if (folderFilters.Any(filter => dirInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                var directories = Directory.GetDirectories(path);
+                foreach (var dir in directories)
                 {
-                    Logger.LogInfo($"Directory {dirInfo.Name} skipped due to filter.");
-                    return null;
-                }
-
-                var item = new ProjectItem
-                {
-                    Name = dirInfo.Name,
-                    FullPath = dirInfo.FullName,
-                    IsDirectory = true,
-                    Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>()
-                };
-
-                var children = new ConcurrentBag<ProjectItem>();
-
-                foreach (var subDir in dirInfo.GetDirectories())
-                {
-                    var childItem = AnalyzeSubDirectory(subDir, rootPath);
-                    if (childItem != null)
+                    var subItem = await AnalyzeDirectoryAsync(dir, rootPath);
+                    if (subItem != null)
                     {
-                        children.Add(childItem);
-                        item.FileCount += childItem.FileCount;
+                        item.Children.Add(subItem);
+                        item.FileCount += subItem.FileCount; // Суммируем количество файлов
+                        item.Size += subItem.Size; // Суммируем размеры (если реализовано)
                     }
                 }
 
-                foreach (var file in dirInfo.GetFiles())
+                var files = Directory.GetFiles(path);
+                foreach (var file in files)
                 {
-                    string[] fileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-                    if (fileFilters.Any(filter => file.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                    if (FileFilters.Any(f => file.EndsWith(f, StringComparison.OrdinalIgnoreCase) ||
+                                          Path.GetFileName(file) == f))
                     {
-                        Logger.LogInfo($"File {file.Name} skipped due to filter.");
+                        Logger.LogInfo($"File {file} skipped due to filter.");
                         continue;
                     }
-
                     var fileItem = new ProjectItem
                     {
-                        Name = file.Name,
-                        FullPath = file.FullName,
+                        Name = Path.GetFileName(file),
+                        FullPath = file,
                         IsDirectory = false,
-                        Size = file.Length,
-                        Extension = file.Extension
+                        Size = new FileInfo(file).Length,
+                        Extension = Path.GetExtension(file),
+                        FileCount = 0
                     };
-                    children.Add(fileItem);
+                    item.Children.Add(fileItem);
                     item.FileCount++;
+                    item.Size += fileItem.Size;
                 }
 
-                item.Children = new System.Collections.ObjectModel.ObservableCollection<ProjectItem>(
-                    children.OrderBy(c => !c.IsDirectory).ThenBy(c => c.Name));
-
-                return item.Children.Any() || item.FileCount > 0 ? item : null;
+                return item;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Logger.LogInfo($"Access denied to directory: {path}");
+                return null;
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error analyzing subdirectory: {dirInfo.FullName}", ex);
+                Logger.LogError($"Error analyzing directory {path}", ex);
                 return null;
             }
         }

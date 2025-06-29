@@ -1,5 +1,6 @@
 ﻿using ProjectStructureAnalyzer.Views;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -153,7 +154,7 @@ namespace ProjectStructureAnalyzer
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 // Логируем ошибку если есть система логирования
                 if (viewModel != null)
@@ -162,7 +163,7 @@ namespace ProjectStructureAnalyzer
                 }
 
                 // Можно добавить логирование:
-                // Logger.LogError("Error handling TreeView selection", ex);
+                // Logger.LogError("Error handling TreeView selection");
             }
         }
 
@@ -187,7 +188,6 @@ namespace ProjectStructureAnalyzer
                     }
                     catch
                     {
-                        // Если указанный шрифт недоступен, используем шрифт по умолчанию
                         this.FontFamily = new FontFamily("Segoe UI");
                     }
                 }
@@ -199,15 +199,24 @@ namespace ProjectStructureAnalyzer
                     this.FontSize = fontSize;
                 }
 
-                // Если нужно обновить анализ с новыми фильтрами
-                if (viewModel?.ProjectItems?.Any() == true)
+                // Загружаем фильтры в ViewModel
+                if (viewModel != null)
                 {
-                    // Можно добавить логику для повторного анализа с новыми настройками фильтров
-                    // Например, если пользователь изменил фильтры и хочет сразу увидеть результат:
-                    // viewModel.AnalyzeCommand?.Execute(null);
+                    viewModel.FolderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(f => f.Trim()).ToList() ?? new List<string>();
+                    viewModel.FileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(f => f.Trim()).ToList() ?? new List<string>();
 
-                    // Обновляем статус
-                    viewModel.StatusText = "Настройки применены. Для применения новых фильтров выполните повторный анализ.";
+                    if (viewModel.ProjectItems?.Any() == true)
+                    {
+                        // Повторный анализ с новыми фильтрами
+                        viewModel.AnalyzeCommand?.Execute(null);
+                        viewModel.StatusText = "Настройки применены. Выполнен повторный анализ с новыми фильтрами.";
+                    }
+                    else
+                    {
+                        viewModel.StatusText = "Настройки применены. Выберите папку для анализа.";
+                    }
                 }
             }
             catch (Exception ex)
@@ -215,6 +224,14 @@ namespace ProjectStructureAnalyzer
                 // Обрабатываем ошибки применения настроек
                 MessageBox.Show($"Ошибка применения настроек: {ex.Message}", "Ошибка",
                                MessageBoxButton.OK, MessageBoxImage.Error);
+
+                // Восстанавливаем значения по умолчанию
+                this.FontFamily = new FontFamily("Segoe UI");
+                this.FontSize = 13;
+                if (viewModel != null)
+                {
+                    viewModel.StatusText = "Настройки сброшены на значения по умолчанию из-за ошибки.";
+                }
 
                 // Можно добавить логирование:
                 // Logger.LogError("Error applying settings", ex);

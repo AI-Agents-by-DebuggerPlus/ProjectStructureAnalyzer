@@ -2,13 +2,15 @@
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Forms;
 
 namespace ProjectStructureAnalyzer
 {
@@ -25,6 +27,8 @@ namespace ProjectStructureAnalyzer
         private int folderCount;
         private int fileCount;
         private Brush? exportStatusTextForeground;
+        private List<string> folderFilters = new List<string>();
+        private List<string> fileFilters = new List<string>();
 
         // Добавляем событие для отображения подсказки
         public event Action ShowFolderSelectionHint;
@@ -33,6 +37,7 @@ namespace ProjectStructureAnalyzer
         {
             projectItems = new ObservableCollection<ProjectItem>();
             SelectedPath = Properties.Settings.Default.LastSelectedPath;
+            LoadFiltersFromSettings(); // Загружаем фильтры при инициализации
             if (!string.IsNullOrEmpty(SelectedPath) && Directory.Exists(SelectedPath))
             {
                 AnalyzeButtonEnabled = true;
@@ -107,6 +112,18 @@ namespace ProjectStructureAnalyzer
             set => SetProperty(ref exportStatusTextForeground, value);
         }
 
+        public List<string> FolderFilters
+        {
+            get => folderFilters;
+            set => SetProperty(ref folderFilters, value);
+        }
+
+        public List<string> FileFilters
+        {
+            get => fileFilters;
+            set => SetProperty(ref fileFilters, value);
+        }
+
         public ICommand SelectFolderCommand => new RelayCommand(SelectFolder);
 
         public ICommand AnalyzeCommand => new AsyncRelayCommand(AnalyzeAsync);
@@ -143,7 +160,6 @@ namespace ProjectStructureAnalyzer
             // Проверяем, выбрана ли папка
             if (string.IsNullOrEmpty(SelectedPath))
             {
-                // Вызываем событие для отображения подсказки
                 ShowFolderSelectionHint?.Invoke();
                 StatusText = "Сначала выберите папку для анализа.";
                 return;
@@ -159,6 +175,10 @@ namespace ProjectStructureAnalyzer
             {
                 StatusText = "Анализ структуры проекта...";
                 ProjectItems.Clear();
+
+                // Передаем фильтры в DirectoryAnalyzer
+                directoryAnalyzer.FolderFilters = FolderFilters;
+                directoryAnalyzer.FileFilters = FileFilters;
 
                 var rootItem = await directoryAnalyzer.AnalyzeDirectoryAsync(SelectedPath, SelectedPath);
                 if (rootItem != null)
@@ -249,6 +269,14 @@ namespace ProjectStructureAnalyzer
                 count += CountFolders(child);
             }
             return count;
+        }
+
+        private void LoadFiltersFromSettings()
+        {
+            FolderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(f => f.Trim()).ToList() ?? new List<string>();
+            FileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(f => f.Trim()).ToList() ?? new List<string>();
         }
     }
 }
