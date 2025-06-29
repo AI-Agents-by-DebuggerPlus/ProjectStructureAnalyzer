@@ -134,8 +134,9 @@ namespace ProjectStructureAnalyzer
         {
             try
             {
-                settingsManager.LoadDefaultSettings(); // Загружаем только default.json как базовые настройки
-                Logger.LogInfo("Font settings loaded from default.json: Segoe UI, size 10"); // Логирование загрузки шрифта
+                settingsManager.LoadDefaultSettings();
+                var uiSettings = settingsManager.Settings.UserInterface;
+                Logger.LogInfo($"Font settings loaded from default.json: {uiSettings.FontFamily}, size {uiSettings.FontSize}");
                 ApplyLoadedSettings();
                 Logger.LogInfo("Settings loaded from default.json successfully");
             }
@@ -352,6 +353,36 @@ namespace ProjectStructureAnalyzer
             {
                 Logger.LogError("Error saving current settings", ex);
                 StatusText = "Ошибка при сохранении настроек.";
+            }
+        }
+
+        public async Task ReanalyzeProjectAsync()
+        {
+            if (string.IsNullOrEmpty(SelectedPath))
+            {
+                ShowFolderSelectionHint?.Invoke();
+                StatusText = "Сначала выберите папку для анализа.";
+                return;
+            }
+
+            if (!Directory.Exists(SelectedPath))
+            {
+                System.Windows.MessageBox.Show("Выберите корректную папку для анализа.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                StatusText = "Перезапуск анализа проекта с новыми настройками...";
+                Logger.LogInfo($"Reanalyzing project at: {SelectedPath} due to settings change");
+                await AnalyzeAsync();
+                Logger.LogInfo("Project reanalysis completed successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Ошибка при перезапуске анализа: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText = "Ошибка при перезапуске анализа.";
+                Logger.LogError("Error reanalyzing project", ex);
             }
         }
 

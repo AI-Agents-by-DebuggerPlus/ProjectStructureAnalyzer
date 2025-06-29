@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -182,11 +183,12 @@ namespace ProjectStructureAnalyzer
             }
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 SaveCurrentSettings();
+                await mainWindow.ViewModel.ReanalyzeProjectAsync();
                 DialogResult = true;
                 Close();
             }
@@ -231,7 +233,7 @@ namespace ProjectStructureAnalyzer
             }
         }
 
-        private void SaveAsDefaultButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveAsDefaultButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -252,6 +254,7 @@ namespace ProjectStructureAnalyzer
                     File.WriteAllText(defaultProfilePath, json);
 
                     SaveCurrentSettings();
+                    await mainWindow.ViewModel.ReanalyzeProjectAsync();
 
                     Logger.LogInfo("Default settings profile saved");
                     MessageBox.Show("Настройки сохранены как настройки по умолчанию", "Сохранение",
@@ -266,7 +269,7 @@ namespace ProjectStructureAnalyzer
             }
         }
 
-        private void LoadProfileButton_Click(object sender, RoutedEventArgs e)
+        private async void LoadProfileButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -286,6 +289,7 @@ namespace ProjectStructureAnalyzer
                     {
                         ApplyProfile(profile);
                         SaveCurrentSettings();
+                        await mainWindow.ViewModel.ReanalyzeProjectAsync();
                         Logger.LogInfo($"Settings profile loaded from: {dialog.FileName}");
                         MessageBox.Show($"Профиль настроек '{profile.Name}' загружен", "Загрузка",
                                       MessageBoxButton.OK, MessageBoxImage.Information);
