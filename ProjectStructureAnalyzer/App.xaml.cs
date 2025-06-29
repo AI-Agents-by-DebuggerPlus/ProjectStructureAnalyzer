@@ -3,16 +3,14 @@
 namespace ProjectStructureAnalyzer
 {
     /// <summary>
-    /// Логика взаимодействия для App.xaml
+    /// Interaction logic for App.xaml
     /// </summary>
     public partial class App : Application
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            Logger.ClearLogFile(); // Очистка лог-файла при запуске
             base.OnStartup(e);
-
-            // Настройка глобальных параметров приложения
-            ShutdownMode = ShutdownMode.OnMainWindowClose;
         }
     }
 }

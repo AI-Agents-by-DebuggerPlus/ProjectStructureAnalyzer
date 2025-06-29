@@ -15,19 +15,32 @@ namespace ProjectStructureAnalyzer
     {
         private readonly MainWindow mainWindow;
         private bool _isLoading = false;
-
-        // Словари для связи категорий с чекбоксами
         private Dictionary<CheckBox, List<CheckBox>> _categoryMappings;
 
-        // Класс для сериализации настроек
         public class SettingsProfile
         {
             public string Name { get; set; } = "";
+            public UserInterfaceSettings UserInterface { get; set; } = new UserInterfaceSettings();
+            public FilterSettings FilterSettings { get; set; } = new FilterSettings();
+            public ApplicationSettings ApplicationSettings { get; set; } = new ApplicationSettings();
+            public DateTime CreatedDate { get; set; } = DateTime.Now;
+        }
+
+        public class UserInterfaceSettings
+        {
             public string FontFamily { get; set; } = "Segoe UI";
             public int FontSize { get; set; } = 13;
+        }
+
+        public class FilterSettings
+        {
             public List<string> FolderFilters { get; set; } = new List<string>();
             public List<string> FileFilters { get; set; } = new List<string>();
-            public DateTime CreatedDate { get; set; } = DateTime.Now;
+        }
+
+        public class ApplicationSettings
+        {
+            public string LastSelectedPath { get; set; } = "";
         }
 
         public SettingsWindow(MainWindow mainWindow)
@@ -42,33 +55,12 @@ namespace ProjectStructureAnalyzer
         {
             _categoryMappings = new Dictionary<CheckBox, List<CheckBox>>
             {
-                [ExcludeSystemFilesCheckBox] = new List<CheckBox>
-                {
-                    FolderVsCheckBox, FolderGitCheckBox, FolderVscodeCheckBox, FolderIdeaCheckBox,
-                    FileGitignoreCheckBox, FileGitattributesCheckBox, FileUserCheckBox, FileSuoCheckBox
-                },
-                [ExcludeBuildFilesCheckBox] = new List<CheckBox>
-                {
-                    FolderBinCheckBox, FolderObjCheckBox, FolderDebugCheckBox, FolderReleaseCheckBox,
-                    FileSlnCheckBox, FileCsprojCheckBox, FileVbprojCheckBox, FileFsprojCheckBox
-                },
-                [ExcludeGeneratedFilesCheckBox] = new List<CheckBox>
-                {
-                    FileDesignerCheckBox, FileGCsCheckBox, FileGICsCheckBox, FileAssemblyInfoCheckBox
-                },
-                [ExcludeConfigFilesCheckBox] = new List<CheckBox>
-                {
-                    FileConfigCheckBox, FileJsonCheckBox, FileXmlCheckBox, FileYamlCheckBox
-                },
-                [ExcludeResourceFilesCheckBox] = new List<CheckBox>
-                {
-                    FolderNodeModulesCheckBox, FolderPackagesCheckBox, FolderNugetCheckBox
-                },
-                [ExcludeDocumentationCheckBox] = new List<CheckBox>
-                {
-                    FolderDocsCheckBox, FolderDocumentationCheckBox,
-                    FileMdCheckBox, FileTxtCheckBox, FileReadmeCheckBox
-                }
+                [ExcludeSystemFilesCheckBox] = new List<CheckBox> { FolderVsCheckBox, FolderGitCheckBox, FolderVscodeCheckBox, FolderIdeaCheckBox, FileGitignoreCheckBox, FileGitattributesCheckBox, FileUserCheckBox, FileSuoCheckBox },
+                [ExcludeBuildFilesCheckBox] = new List<CheckBox> { FolderBinCheckBox, FolderObjCheckBox, FolderDebugCheckBox, FolderReleaseCheckBox, FileSlnCheckBox, FileCsprojCheckBox, FileVbprojCheckBox, FileFsprojCheckBox },
+                [ExcludeGeneratedFilesCheckBox] = new List<CheckBox> { FileDesignerCheckBox, FileGCsCheckBox, FileGICsCheckBox, FileAssemblyInfoCheckBox },
+                [ExcludeConfigFilesCheckBox] = new List<CheckBox> { FileConfigCheckBox, FileJsonCheckBox, FileXmlCheckBox, FileYamlCheckBox },
+                [ExcludeResourceFilesCheckBox] = new List<CheckBox> { FolderNodeModulesCheckBox, FolderPackagesCheckBox, FolderNugetCheckBox },
+                [ExcludeDocumentationCheckBox] = new List<CheckBox> { FolderDocsCheckBox, FolderDocumentationCheckBox, FileMdCheckBox, FileTxtCheckBox, FileReadmeCheckBox }
             };
         }
 
@@ -77,27 +69,19 @@ namespace ProjectStructureAnalyzer
             _isLoading = true;
             try
             {
-                // Загрузка шрифта
-                var fontFamily = new FontFamily(Properties.Settings.Default.ApplicationFontFamily ?? "Segoe UI");
+                var settings = mainWindow.ViewModel.AppSettings;
+                var uiSettings = settings.UserInterface;
+
                 FontComboBox.ItemsSource = Fonts.SystemFontFamilies.OrderBy(f => f.Source);
-                FontComboBox.SelectedItem = Fonts.SystemFontFamilies.FirstOrDefault(f => f.Source == fontFamily.Source) ??
+                FontComboBox.SelectedItem = Fonts.SystemFontFamilies.FirstOrDefault(f => f.Source == uiSettings.FontFamily) ??
                                           Fonts.SystemFontFamilies.First(f => f.Source == "Segoe UI");
 
-                // Загрузка размера шрифта
-                FontSizeSlider.Value = Properties.Settings.Default.ApplicationFontSize > 0 ?
-                                      Properties.Settings.Default.ApplicationFontSize : 13;
+                FontSizeSlider.Value = uiSettings.FontSize > 0 ? uiSettings.FontSize : 13;
 
-                // Загрузка фильтров папок
-                var folderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-                LoadFolderFilters(folderFilters);
+                LoadFolderFilters(settings.FilterSettings.FolderFilters.ToArray());
+                LoadFileFilters(settings.FilterSettings.FileFilters.ToArray());
 
-                // Загрузка фильтров файлов
-                var fileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-                LoadFileFilters(fileFilters);
-
-                // Обновление состояния категорий
                 UpdateCategoryCheckBoxes(null, null);
-
                 PreviewSettingsChanged(null, null);
             }
             catch (Exception ex)
@@ -113,32 +97,21 @@ namespace ProjectStructureAnalyzer
 
         private void LoadFolderFilters(string[] folderFilters)
         {
-            // Системные папки
             FolderVsCheckBox.IsChecked = folderFilters.Contains(".vs", StringComparer.OrdinalIgnoreCase);
             FolderGitCheckBox.IsChecked = folderFilters.Contains(".git", StringComparer.OrdinalIgnoreCase);
             FolderVscodeCheckBox.IsChecked = folderFilters.Contains(".vscode", StringComparer.OrdinalIgnoreCase);
             FolderIdeaCheckBox.IsChecked = folderFilters.Contains(".idea", StringComparer.OrdinalIgnoreCase);
-
-            // Папки сборки
             FolderBinCheckBox.IsChecked = folderFilters.Contains("bin", StringComparer.OrdinalIgnoreCase);
             FolderObjCheckBox.IsChecked = folderFilters.Contains("obj", StringComparer.OrdinalIgnoreCase);
             FolderDebugCheckBox.IsChecked = folderFilters.Contains("Debug", StringComparer.OrdinalIgnoreCase);
             FolderReleaseCheckBox.IsChecked = folderFilters.Contains("Release", StringComparer.OrdinalIgnoreCase);
-
-            // Структурные папки
             FolderSrcCheckBox.IsChecked = folderFilters.Contains("src", StringComparer.OrdinalIgnoreCase);
             FolderPropertiesCheckBox.IsChecked = folderFilters.Contains("Properties", StringComparer.OrdinalIgnoreCase);
-
-            // Папки зависимостей
             FolderNodeModulesCheckBox.IsChecked = folderFilters.Contains("node_modules", StringComparer.OrdinalIgnoreCase);
             FolderPackagesCheckBox.IsChecked = folderFilters.Contains("packages", StringComparer.OrdinalIgnoreCase);
             FolderNugetCheckBox.IsChecked = folderFilters.Contains(".nuget", StringComparer.OrdinalIgnoreCase);
-
-            // Папки документации
             FolderDocsCheckBox.IsChecked = folderFilters.Contains("docs", StringComparer.OrdinalIgnoreCase);
             FolderDocumentationCheckBox.IsChecked = folderFilters.Contains("Documentation", StringComparer.OrdinalIgnoreCase);
-
-            // Временные папки
             FolderTempCheckBox.IsChecked = folderFilters.Contains("temp", StringComparer.OrdinalIgnoreCase);
             FolderTmpCheckBox.IsChecked = folderFilters.Contains("tmp", StringComparer.OrdinalIgnoreCase);
             FolderCacheCheckBox.IsChecked = folderFilters.Contains("cache", StringComparer.OrdinalIgnoreCase);
@@ -146,37 +119,25 @@ namespace ProjectStructureAnalyzer
 
         private void LoadFileFilters(string[] fileFilters)
         {
-            // Исходный код
             FileCsCheckBox.IsChecked = fileFilters.Contains(".cs", StringComparer.OrdinalIgnoreCase);
             FileXamlCheckBox.IsChecked = fileFilters.Contains(".xaml", StringComparer.OrdinalIgnoreCase);
             FileVbCheckBox.IsChecked = fileFilters.Contains(".vb", StringComparer.OrdinalIgnoreCase);
-
-            // Проектные файлы
             FileSlnCheckBox.IsChecked = fileFilters.Contains(".sln", StringComparer.OrdinalIgnoreCase);
             FileCsprojCheckBox.IsChecked = fileFilters.Contains(".csproj", StringComparer.OrdinalIgnoreCase);
             FileVbprojCheckBox.IsChecked = fileFilters.Contains(".vbproj", StringComparer.OrdinalIgnoreCase);
             FileFsprojCheckBox.IsChecked = fileFilters.Contains(".fsproj", StringComparer.OrdinalIgnoreCase);
-
-            // Конфигурационные
             FileConfigCheckBox.IsChecked = fileFilters.Contains(".config", StringComparer.OrdinalIgnoreCase);
             FileJsonCheckBox.IsChecked = fileFilters.Contains(".json", StringComparer.OrdinalIgnoreCase);
             FileXmlCheckBox.IsChecked = fileFilters.Contains(".xml", StringComparer.OrdinalIgnoreCase);
-            FileYamlCheckBox.IsChecked = fileFilters.Contains(".yaml", StringComparer.OrdinalIgnoreCase) ||
-                                        fileFilters.Contains(".yml", StringComparer.OrdinalIgnoreCase);
-
-            // Автогенерируемые
+            FileYamlCheckBox.IsChecked = (fileFilters.Contains(".yaml", StringComparer.OrdinalIgnoreCase) || fileFilters.Contains(".yml", StringComparer.OrdinalIgnoreCase));
             FileDesignerCheckBox.IsChecked = fileFilters.Contains(".Designer.cs", StringComparer.OrdinalIgnoreCase);
             FileGCsCheckBox.IsChecked = fileFilters.Contains(".g.cs", StringComparer.OrdinalIgnoreCase);
             FileGICsCheckBox.IsChecked = fileFilters.Contains(".g.i.cs", StringComparer.OrdinalIgnoreCase);
             FileAssemblyInfoCheckBox.IsChecked = fileFilters.Contains("AssemblyInfo.cs", StringComparer.OrdinalIgnoreCase);
-
-            // Системные
             FileGitignoreCheckBox.IsChecked = fileFilters.Contains(".gitignore", StringComparer.OrdinalIgnoreCase);
             FileGitattributesCheckBox.IsChecked = fileFilters.Contains(".gitattributes", StringComparer.OrdinalIgnoreCase);
             FileUserCheckBox.IsChecked = fileFilters.Contains(".user", StringComparer.OrdinalIgnoreCase);
             FileSuoCheckBox.IsChecked = fileFilters.Contains(".suo", StringComparer.OrdinalIgnoreCase);
-
-            // Документация
             FileMdCheckBox.IsChecked = fileFilters.Contains(".md", StringComparer.OrdinalIgnoreCase);
             FileTxtCheckBox.IsChecked = fileFilters.Contains(".txt", StringComparer.OrdinalIgnoreCase);
             FileReadmeCheckBox.IsChecked = fileFilters.Contains("README.*", StringComparer.OrdinalIgnoreCase);
@@ -216,7 +177,7 @@ namespace ProjectStructureAnalyzer
                 }
                 else
                 {
-                    categoryCheckBox.IsChecked = null; // Частичное выделение
+                    categoryCheckBox.IsChecked = null;
                 }
             }
         }
@@ -286,11 +247,10 @@ namespace ProjectStructureAnalyzer
                     var profile = CreateCurrentProfile();
                     profile.Name = "Default Settings";
 
-                    var defaultProfilePath = Path.Combine(GetProfilesDirectory(), "default.json");
+                    var defaultProfilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "default.json");
                     var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
                     File.WriteAllText(defaultProfilePath, json);
 
-                    // Также сохраняем в обычные настройки
                     SaveCurrentSettings();
 
                     Logger.LogInfo("Default settings profile saved");
@@ -325,6 +285,7 @@ namespace ProjectStructureAnalyzer
                     if (profile != null)
                     {
                         ApplyProfile(profile);
+                        SaveCurrentSettings();
                         Logger.LogInfo($"Settings profile loaded from: {dialog.FileName}");
                         MessageBox.Show($"Профиль настроек '{profile.Name}' загружен", "Загрузка",
                                       MessageBoxButton.OK, MessageBoxImage.Information);
@@ -343,10 +304,21 @@ namespace ProjectStructureAnalyzer
         {
             return new SettingsProfile
             {
-                FontFamily = (FontComboBox.SelectedItem as FontFamily)?.Source ?? "Segoe UI",
-                FontSize = (int)FontSizeSlider.Value,
-                FolderFilters = GetSelectedFolderFilters(),
-                FileFilters = GetSelectedFileFilters()
+                UserInterface = new UserInterfaceSettings
+                {
+                    FontFamily = (FontComboBox.SelectedItem as FontFamily)?.Source ?? "Segoe UI",
+                    FontSize = (int)FontSizeSlider.Value
+                },
+                FilterSettings = new FilterSettings
+                {
+                    FolderFilters = GetSelectedFolderFilters(),
+                    FileFilters = GetSelectedFileFilters()
+                },
+                ApplicationSettings = new ApplicationSettings
+                {
+                    LastSelectedPath = mainWindow.ViewModel.SelectedPath ?? ""
+                },
+                CreatedDate = DateTime.Now
             };
         }
 
@@ -355,15 +327,13 @@ namespace ProjectStructureAnalyzer
             _isLoading = true;
             try
             {
-                // Применяем шрифт
-                var fontFamily = Fonts.SystemFontFamilies.FirstOrDefault(f => f.Source == profile.FontFamily) ??
+                var fontFamily = Fonts.SystemFontFamilies.FirstOrDefault(f => f.Source == profile.UserInterface.FontFamily) ??
                                Fonts.SystemFontFamilies.First(f => f.Source == "Segoe UI");
                 FontComboBox.SelectedItem = fontFamily;
-                FontSizeSlider.Value = Math.Max(10, Math.Min(24, profile.FontSize));
+                FontSizeSlider.Value = Math.Max(10, Math.Min(24, profile.UserInterface.FontSize));
 
-                // Применяем фильтры
-                LoadFolderFilters(profile.FolderFilters.ToArray());
-                LoadFileFilters(profile.FileFilters.ToArray());
+                LoadFolderFilters(profile.FilterSettings.FolderFilters.ToArray());
+                LoadFileFilters(profile.FilterSettings.FileFilters.ToArray());
 
                 UpdateCategoryCheckBoxes(null, null);
                 PreviewSettingsChanged(null, null);
@@ -382,141 +352,70 @@ namespace ProjectStructureAnalyzer
             return profilesDir;
         }
 
-        public static void LoadDefaultSettingsIfExists()
-        {
-            try
-            {
-                var exePath = AppDomain.CurrentDomain.BaseDirectory;
-                var defaultProfilePath = Path.Combine(exePath, "Settings", "default.json");
-
-                if (File.Exists(defaultProfilePath))
-                {
-                    var json = File.ReadAllText(defaultProfilePath);
-                    var profile = JsonSerializer.Deserialize<SettingsProfile>(json);
-
-                    if (profile != null)
-                    {
-                        Properties.Settings.Default.ApplicationFontFamily = profile.FontFamily;
-                        Properties.Settings.Default.ApplicationFontSize = profile.FontSize;
-                        Properties.Settings.Default.FolderFilters = string.Join(",", profile.FolderFilters);
-                        Properties.Settings.Default.FileFilters = string.Join(",", profile.FileFilters);
-                        Properties.Settings.Default.Save();
-
-                        Logger.LogInfo("Default settings loaded successfully");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("Error loading default settings", ex);
-            }
-        }
-
         private void SaveCurrentSettings()
         {
-            // Сохранение шрифта
-            if (FontComboBox.SelectedItem is FontFamily fontFamily)
-            {
-                Properties.Settings.Default.ApplicationFontFamily = fontFamily.Source;
-            }
+            var fontFamily = (FontComboBox.SelectedItem as FontFamily)?.Source ?? "Segoe UI";
+            var fontSize = FontSizeSlider.Value;
 
-            // Сохранение размера шрифта
-            Properties.Settings.Default.ApplicationFontSize = (int)FontSizeSlider.Value;
-
-            // Сохранение фильтров папок
             var folderFilters = GetSelectedFolderFilters();
-            Properties.Settings.Default.FolderFilters = string.Join(",", folderFilters);
-
-            // Сохранение фильтров файлов
             var fileFilters = GetSelectedFileFilters();
-            Properties.Settings.Default.FileFilters = string.Join(",", fileFilters);
 
-            Properties.Settings.Default.Save();
-            Logger.LogInfo("Settings saved successfully.");
+            mainWindow.ViewModel.UpdateInterfaceSettings(fontFamily, fontSize);
+            mainWindow.ViewModel.UpdateFilters(folderFilters, fileFilters);
+            mainWindow.ViewModel.SaveCurrentSettings();
 
-            // Применение настроек в MainWindow
-            mainWindow.ApplySettings();
+            mainWindow.ApplySettingsFromJson();
         }
 
         private List<string> GetSelectedFolderFilters()
         {
             var filters = new List<string>();
-
-            // Системные папки
             if (FolderVsCheckBox.IsChecked == true) filters.Add(".vs");
             if (FolderGitCheckBox.IsChecked == true) filters.Add(".git");
             if (FolderVscodeCheckBox.IsChecked == true) filters.Add(".vscode");
             if (FolderIdeaCheckBox.IsChecked == true) filters.Add(".idea");
-
-            // Папки сборки
             if (FolderBinCheckBox.IsChecked == true) filters.Add("bin");
             if (FolderObjCheckBox.IsChecked == true) filters.Add("obj");
             if (FolderDebugCheckBox.IsChecked == true) filters.Add("Debug");
             if (FolderReleaseCheckBox.IsChecked == true) filters.Add("Release");
-
-            // Структурные папки
             if (FolderSrcCheckBox.IsChecked == true) filters.Add("src");
             if (FolderPropertiesCheckBox.IsChecked == true) filters.Add("Properties");
-
-            // Папки зависимостей
             if (FolderNodeModulesCheckBox.IsChecked == true) filters.Add("node_modules");
             if (FolderPackagesCheckBox.IsChecked == true) filters.Add("packages");
             if (FolderNugetCheckBox.IsChecked == true) filters.Add(".nuget");
-
-            // Папки документации
             if (FolderDocsCheckBox.IsChecked == true) filters.Add("docs");
             if (FolderDocumentationCheckBox.IsChecked == true) filters.Add("Documentation");
-
-            // Временные папки
             if (FolderTempCheckBox.IsChecked == true) filters.Add("temp");
             if (FolderTmpCheckBox.IsChecked == true) filters.Add("tmp");
             if (FolderCacheCheckBox.IsChecked == true) filters.Add("cache");
-
             return filters;
         }
 
         private List<string> GetSelectedFileFilters()
         {
             var filters = new List<string>();
-
-            // Исходный код
             if (FileCsCheckBox.IsChecked == true) filters.Add(".cs");
             if (FileXamlCheckBox.IsChecked == true) filters.Add(".xaml");
             if (FileVbCheckBox.IsChecked == true) filters.Add(".vb");
-
-            // Проектные файлы
             if (FileSlnCheckBox.IsChecked == true) filters.Add(".sln");
             if (FileCsprojCheckBox.IsChecked == true) filters.Add(".csproj");
             if (FileVbprojCheckBox.IsChecked == true) filters.Add(".vbproj");
             if (FileFsprojCheckBox.IsChecked == true) filters.Add(".fsproj");
-
-            // Конфигурационные
             if (FileConfigCheckBox.IsChecked == true) filters.Add(".config");
             if (FileJsonCheckBox.IsChecked == true) filters.Add(".json");
             if (FileXmlCheckBox.IsChecked == true) filters.Add(".xml");
-            if (FileYamlCheckBox.IsChecked == true)
-            {
-                filters.Add(".yaml");
-                filters.Add(".yml");
-            }
-
-            // Автогенерируемые
+            if (FileYamlCheckBox.IsChecked == true) { filters.Add(".yaml"); filters.Add(".yml"); }
             if (FileDesignerCheckBox.IsChecked == true) filters.Add(".Designer.cs");
             if (FileGCsCheckBox.IsChecked == true) filters.Add(".g.cs");
             if (FileGICsCheckBox.IsChecked == true) filters.Add(".g.i.cs");
             if (FileAssemblyInfoCheckBox.IsChecked == true) filters.Add("AssemblyInfo.cs");
-
-            // Системные
             if (FileGitignoreCheckBox.IsChecked == true) filters.Add(".gitignore");
             if (FileGitattributesCheckBox.IsChecked == true) filters.Add(".gitattributes");
             if (FileUserCheckBox.IsChecked == true) filters.Add(".user");
             if (FileSuoCheckBox.IsChecked == true) filters.Add(".suo");
-
-            // Документация
             if (FileMdCheckBox.IsChecked == true) filters.Add(".md");
             if (FileTxtCheckBox.IsChecked == true) filters.Add(".txt");
             if (FileReadmeCheckBox.IsChecked == true) filters.Add("README.*");
-
             return filters;
         }
 
@@ -538,20 +437,17 @@ namespace ProjectStructureAnalyzer
             _isLoading = true;
             try
             {
-                // Сброс всех чекбоксов категорий
                 foreach (var categoryCheckBox in _categoryMappings.Keys)
                 {
                     categoryCheckBox.IsChecked = false;
                 }
 
-                // Сброс всех чекбоксов папок и файлов
                 var allCheckBoxes = GetAllFilterCheckBoxes();
                 foreach (var checkBox in allCheckBoxes)
                 {
                     checkBox.IsChecked = false;
                 }
 
-                // Установка стандартных исключений (рекомендуемые)
                 FolderVsCheckBox.IsChecked = true;
                 FolderGitCheckBox.IsChecked = true;
                 FolderBinCheckBox.IsChecked = true;
@@ -560,7 +456,6 @@ namespace ProjectStructureAnalyzer
                 FileGCsCheckBox.IsChecked = true;
                 FileGICsCheckBox.IsChecked = true;
 
-                // Сброс шрифта
                 FontComboBox.SelectedItem = Fonts.SystemFontFamilies.First(f => f.Source == "Segoe UI");
                 FontSizeSlider.Value = 13;
 
@@ -576,20 +471,11 @@ namespace ProjectStructureAnalyzer
         private List<CheckBox> GetAllFilterCheckBoxes()
         {
             var checkBoxes = new List<CheckBox>();
-
-            // Добавление всех чекбоксов из категорий
             foreach (var mapping in _categoryMappings)
             {
                 checkBoxes.AddRange(mapping.Value);
             }
-
-            // Добавление остальных чекбоксов
-            checkBoxes.AddRange(new[]
-            {
-                FolderSrcCheckBox, FolderPropertiesCheckBox, FolderTempCheckBox, FolderTmpCheckBox, FolderCacheCheckBox,
-                FileCsCheckBox, FileXamlCheckBox, FileVbCheckBox
-            });
-
+            checkBoxes.AddRange(new[] { FolderSrcCheckBox, FolderPropertiesCheckBox, FolderTempCheckBox, FolderTmpCheckBox, FolderCacheCheckBox, FileCsCheckBox, FileXamlCheckBox, FileVbCheckBox });
             return checkBoxes.Distinct().ToList();
         }
 
@@ -623,32 +509,6 @@ namespace ProjectStructureAnalyzer
             }
             catch
             {
-                // Игнорируем ошибки предпросмотра
-            }
-        }
-
-        public bool SaveSettings(string fontFamily, double fontSize, string folderFilters, string fileFilters)
-        {
-            try
-            {
-                Properties.Settings.Default.ApplicationFontFamily = fontFamily;
-                if (fontSize > 0)
-                {
-                    Properties.Settings.Default.ApplicationFontSize = (int)fontSize;
-                }
-                else
-                {
-                    return false;
-                }
-                Properties.Settings.Default.FolderFilters = folderFilters;
-                Properties.Settings.Default.FileFilters = fileFilters;
-                Properties.Settings.Default.Save();
-                mainWindow.ApplySettings();
-                return true;
-            }
-            catch
-            {
-                return false;
             }
         }
     }

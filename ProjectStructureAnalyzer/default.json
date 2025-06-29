@@ -1,0 +1,49 @@
+{
+  "applicationSettings": {
+    "lastSelectedPath": "",
+    "autoSaveSettings": true,
+    "enableLogging": true,
+    "logLevel": "Info"
+  },
+  "filterSettings": {
+    "folderFilters": [
+      "bin",
+      "obj",
+      ".git",
+      ".vs",
+      "node_modules",
+      "packages",
+      ".vscode",
+      "Debug",
+      "Release",
+      "TestResults",
+      ".nuget",
+      "bower_components"
+    ],
+    "fileFilters": [
+      ".user",
+      ".suo",
+      ".cache",
+      ".tmp",
+      ".log",
+      ".pdb",
+      ".vspscc",
+      ".vssscc",
+      ".bak",
+      ".swp",
+      ".DS_Store",
+      "Thumbs.db",
+      "desktop.ini"
+    ],
+    "enableFolderFilters": true,
+    "enableFileFilters": true
+  },
+  "userInterface": {
+    "fontFamily": "Segoe UI",
+    "fontSize": 13.0,
+    "theme": "Light",
+    "windowWidth": 800.0,
+    "windowHeight": 600.0,
+    "windowState": "Normal"
+  }
+}

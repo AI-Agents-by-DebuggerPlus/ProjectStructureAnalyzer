@@ -21,6 +21,7 @@
 		<Compile Remove="Converters\BooleanToVisibilityConverter.cs" />
 	</ItemGroup>
 	<ItemGroup>
+	  <None Remove="default.json" />
 	  <None Remove="Resources\discord.png" />
 	</ItemGroup>
 	<ItemGroup>
@@ -38,6 +39,7 @@
 		<AppDesigner Include="Properties\" />
 	</ItemGroup>
 	<ItemGroup>
+	  <Content Include="default.json" />
 	  <Content Include="Resources\discord.png">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>

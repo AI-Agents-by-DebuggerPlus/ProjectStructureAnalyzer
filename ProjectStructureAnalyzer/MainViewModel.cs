@@ -17,6 +17,7 @@ namespace ProjectStructureAnalyzer
     public class MainViewModel : ObservableObject
     {
         private readonly DirectoryAnalyzer directoryAnalyzer = new DirectoryAnalyzer();
+        private readonly JsonSettingsManager settingsManager;
         private ObservableCollection<ProjectItem> projectItems;
         private string? selectedPath;
         private string? statusText;
@@ -30,27 +31,17 @@ namespace ProjectStructureAnalyzer
         private List<string> folderFilters = new List<string>();
         private List<string> fileFilters = new List<string>();
 
-        // Добавляем событие для отображения подсказки
         public event Action ShowFolderSelectionHint;
 
         public MainViewModel()
         {
+            settingsManager = new JsonSettingsManager();
             projectItems = new ObservableCollection<ProjectItem>();
-            SelectedPath = Properties.Settings.Default.LastSelectedPath;
-            LoadFiltersFromSettings(); // Загружаем фильтры при инициализации
-            if (!string.IsNullOrEmpty(SelectedPath) && Directory.Exists(SelectedPath))
-            {
-                AnalyzeButtonEnabled = true;
-                StatusText = "Последняя папка загружена.\nНажмите 'Анализировать'.";
-            }
-            else
-            {
-                SelectedPath = "";
-                AnalyzeButtonEnabled = false;
-                StatusText = "Выберите папку для анализа.";
-            }
-            ExportStatusVisibility = Visibility.Collapsed;
+            LoadSettingsFromJson();
+            InitializeViewModel();
         }
+
+        #region Properties
 
         public ObservableCollection<ProjectItem> ProjectItems
         {
@@ -124,13 +115,65 @@ namespace ProjectStructureAnalyzer
             set => SetProperty(ref fileFilters, value);
         }
 
+        public AppSettings AppSettings => settingsManager.Settings;
+
+        #endregion
+
+        #region Commands
+
         public ICommand SelectFolderCommand => new RelayCommand(SelectFolder);
-
         public ICommand AnalyzeCommand => new AsyncRelayCommand(AnalyzeAsync);
-
         public ICommand ExportCommand => new RelayCommand(Export);
-
         public ICommand SettingsCommand => new RelayCommand(Settings);
+
+        #endregion
+
+        #region Private Methods
+
+        private void LoadSettingsFromJson()
+        {
+            try
+            {
+                settingsManager.LoadDefaultSettings(); // Загружаем только default.json как базовые настройки
+                Logger.LogInfo("Font settings loaded from default.json: Segoe UI, size 10"); // Логирование загрузки шрифта
+                ApplyLoadedSettings();
+                Logger.LogInfo("Settings loaded from default.json successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error loading settings from JSON", ex);
+                StatusText = "Ошибка загрузки настроек. Используются значения из default.json.";
+                settingsManager.SetDefaultSettings();
+                ApplyLoadedSettings();
+            }
+        }
+
+        private void ApplyLoadedSettings()
+        {
+            var settings = settingsManager.Settings;
+
+            FolderFilters = new List<string>(settings.FilterSettings.FolderFilters);
+            FileFilters = new List<string>(settings.FilterSettings.FileFilters);
+            SelectedPath = settings.ApplicationSettings.LastSelectedPath;
+
+            Logger.LogInfo($"Applied settings - Folder filters: {FolderFilters.Count}, File filters: {FileFilters.Count}");
+        }
+
+        private void InitializeViewModel()
+        {
+            if (!string.IsNullOrEmpty(SelectedPath) && Directory.Exists(SelectedPath))
+            {
+                AnalyzeButtonEnabled = true;
+                StatusText = "Последняя папка загружена из настроек.\nНажмите 'Анализировать'.";
+            }
+            else
+            {
+                SelectedPath = "";
+                AnalyzeButtonEnabled = false;
+                StatusText = "Выберите папку для анализа.";
+            }
+            ExportStatusVisibility = Visibility.Collapsed;
+        }
 
         private void SelectFolder()
         {
@@ -141,23 +184,12 @@ namespace ProjectStructureAnalyzer
                 AnalyzeButtonEnabled = true;
                 StatusText = "Папка выбрана. Нажмите 'Анализировать'.";
                 Logger.LogInfo($"Selected folder: {dialog.SelectedPath}");
-
-                try
-                {
-                    Properties.Settings.Default.LastSelectedPath = SelectedPath;
-                    Properties.Settings.Default.Save();
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError("Error saving selected path", ex);
-                    System.Windows.MessageBox.Show("Ошибка при сохранении выбранного пути.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                settingsManager.UpdateLastSelectedPath(SelectedPath);
             }
         }
 
         private async Task AnalyzeAsync()
         {
-            // Проверяем, выбрана ли папка
             if (string.IsNullOrEmpty(SelectedPath))
             {
                 ShowFolderSelectionHint?.Invoke();
@@ -176,9 +208,9 @@ namespace ProjectStructureAnalyzer
                 StatusText = "Анализ структуры проекта...";
                 ProjectItems.Clear();
 
-                // Передаем фильтры в DirectoryAnalyzer
-                directoryAnalyzer.FolderFilters = FolderFilters;
-                directoryAnalyzer.FileFilters = FileFilters;
+                var settings = settingsManager.Settings;
+                directoryAnalyzer.FolderFilters = settings.FilterSettings.EnableFolderFilters ? FolderFilters : new List<string>();
+                directoryAnalyzer.FileFilters = settings.FilterSettings.EnableFileFilters ? FileFilters : new List<string>();
 
                 var rootItem = await directoryAnalyzer.AnalyzeDirectoryAsync(SelectedPath, SelectedPath);
                 if (rootItem != null)
@@ -243,7 +275,10 @@ namespace ProjectStructureAnalyzer
             if (System.Windows.Application.Current.MainWindow is MainWindow mainWindow)
             {
                 var settingsWindow = new SettingsWindow(mainWindow);
-                settingsWindow.ShowDialog();
+                if (settingsWindow.ShowDialog() == true)
+                {
+                    ReloadSettings();
+                }
             }
             else
             {
@@ -271,12 +306,55 @@ namespace ProjectStructureAnalyzer
             return count;
         }
 
-        private void LoadFiltersFromSettings()
+        #endregion
+
+        #region Public Methods
+
+        public void UpdateFilters(List<string> newFolderFilters, List<string> newFileFilters)
         {
-            FolderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(f => f.Trim()).ToList() ?? new List<string>();
-            FileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(f => f.Trim()).ToList() ?? new List<string>();
+            FolderFilters = newFolderFilters ?? new List<string>();
+            FileFilters = newFileFilters ?? new List<string>();
+            settingsManager.UpdateFilterSettings(FolderFilters, FileFilters);
+            Logger.LogInfo("Filters updated and saved to JSON settings");
         }
+
+        public void UpdateInterfaceSettings(string fontFamily, double fontSize)
+        {
+            settingsManager.UpdateInterfaceSettings(fontFamily, fontSize);
+            Logger.LogInfo($"Interface settings updated: Font={fontFamily}, Size={fontSize}");
+        }
+
+        public void ReloadSettings()
+        {
+            try
+            {
+                settingsManager.LoadSettings();
+                ApplyLoadedSettings();
+                StatusText = "Настройки перезагружены из JSON файла.";
+                Logger.LogInfo("Settings reloaded from JSON");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error reloading settings", ex);
+                StatusText = "Ошибка при перезагрузке настроек.";
+            }
+        }
+
+        public void SaveCurrentSettings()
+        {
+            try
+            {
+                settingsManager.SaveUserSettings();
+                StatusText = "Настройки сохранены.";
+                Logger.LogInfo("Current settings saved to user file");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error saving current settings", ex);
+                StatusText = "Ошибка при сохранении настроек.";
+            }
+        }
+
+        #endregion
     }
 }

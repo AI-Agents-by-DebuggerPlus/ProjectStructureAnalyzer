@@ -10,9 +10,6 @@ using System.Windows.Media.Animation;
 
 namespace ProjectStructureAnalyzer
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         private MainViewModel viewModel;
@@ -20,33 +17,20 @@ namespace ProjectStructureAnalyzer
         public MainWindow()
         {
             InitializeComponent();
-
-            // Создаем ViewModel и устанавливаем как DataContext
             viewModel = new MainViewModel();
             DataContext = viewModel;
-
-            // Подписываемся на событие показа подсказки
             viewModel.ShowFolderSelectionHint += OnShowFolderSelectionHint;
-
-            // Применяем сохраненные настройки при запуске
-            ApplySettings();
+            ApplySettingsFromJson(); // Применяем настройки из default.json
         }
 
-        /// <summary>
-        /// Обработчик события показа подсказки о выборе папки
-        /// </summary>
+        public MainViewModel ViewModel => viewModel;
+
         private void OnShowFolderSelectionHint()
         {
-            // Показываем подсказку пользователю
             ShowFolderSelectionHintMessage();
-
-            // Опционально: анимируем кнопку выбора папки
             AnimateSelectFolderButton();
         }
 
-        /// <summary>
-        /// Показывает сообщение-подсказку о необходимости выбрать папку
-        /// </summary>
         private void ShowFolderSelectionHintMessage()
         {
             MessageBox.Show(
@@ -57,15 +41,10 @@ namespace ProjectStructureAnalyzer
             );
         }
 
-        /// <summary>
-        /// Анимирует кнопку выбора папки для привлечения внимания
-        /// </summary>
         private void AnimateSelectFolderButton()
         {
-            // Найдем кнопку выбора папки (замените имя на актуальное из вашего XAML)
-            if (FindName("SelectFolderButton") is Button selectButton)
+            if (FindButtonByContent("Выбрать папку") is Button selectButton)
             {
-                // Создаем анимацию подсветки
                 var colorAnimation = new ColorAnimation
                 {
                     From = Colors.Transparent,
@@ -75,35 +54,51 @@ namespace ProjectStructureAnalyzer
                     RepeatBehavior = new RepeatBehavior(2)
                 };
 
-                // Применяем анимацию к фону кнопки
                 var brush = new SolidColorBrush(Colors.Transparent);
                 selectButton.Background = brush;
                 brush.BeginAnimation(SolidColorBrush.ColorProperty, colorAnimation);
             }
         }
 
+        private Button FindButtonByContent(string content)
+        {
+            return FindVisualChildren<Button>(this)
+                .FirstOrDefault(b => b.Content?.ToString() == content);
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
+        }
+
         #region Window Management Event Handlers
 
-        /// <summary>
-        /// Обработчик события MouseDown для заголовка окна - позволяет перетаскивать окно
-        /// </summary>
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
                 this.DragMove();
         }
 
-        /// <summary>
-        /// Обработчик кнопки сворачивания окна
-        /// </summary>
         private void Minimize_Click(object sender, RoutedEventArgs e)
         {
             this.WindowState = WindowState.Minimized;
         }
 
-        /// <summary>
-        /// Обработчик кнопки максимизации/восстановления окна
-        /// </summary>
         private void MaximizeRestore_Click(object sender, RoutedEventArgs e)
         {
             if (this.WindowState == WindowState.Maximized)
@@ -112,9 +107,6 @@ namespace ProjectStructureAnalyzer
                 this.WindowState = WindowState.Maximized;
         }
 
-        /// <summary>
-        /// Обработчик кнопки закрытия окна
-        /// </summary>
         private void Close_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
@@ -124,29 +116,18 @@ namespace ProjectStructureAnalyzer
 
         #region UI Event Handlers
 
-        /// <summary>
-        /// Обработчик кнопки "О программе"
-        /// </summary>
         private void About_Click(object sender, RoutedEventArgs e)
         {
-            var aboutWindow = new AboutWindow
-            {
-                Owner = this // Устанавливаем MainWindow как владельца для центрирования
-            };
+            var aboutWindow = new AboutWindow { Owner = this };
             aboutWindow.ShowDialog();
         }
 
-        /// <summary>
-        /// Обработчик выбора элемента в TreeView
-        /// </summary>
         private void TreeViewItem_Selected(object sender, RoutedEventArgs e)
         {
             try
             {
-                // Получаем выбранный элемент
                 if (sender is TreeViewItem item && item.DataContext is ProjectItem projectItem)
                 {
-                    // Обновляем статус с информацией о выбранном элементе
                     if (viewModel != null)
                     {
                         var itemType = projectItem.IsDirectory ? "Папка" : "Файл";
@@ -154,16 +135,13 @@ namespace ProjectStructureAnalyzer
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Логируем ошибку если есть система логирования
+                Logger.LogError("Error handling TreeView selection", ex);
                 if (viewModel != null)
                 {
                     viewModel.StatusText = "Ошибка при выборе элемента";
                 }
-
-                // Можно добавить логирование:
-                // Logger.LogError("Error handling TreeView selection");
             }
         }
 
@@ -171,94 +149,181 @@ namespace ProjectStructureAnalyzer
 
         #region Settings Management
 
-        /// <summary>
-        /// Применяет сохраненные настройки к окну
-        /// </summary>
-        public void ApplySettings()
+        public void ApplySettingsFromJson()
         {
             try
             {
-                // Применяем настройки шрифта
-                var fontFamily = Properties.Settings.Default.ApplicationFontFamily;
-                if (!string.IsNullOrEmpty(fontFamily))
+                // Убедимся, что настройки загружены в viewModel
+                if (viewModel.AppSettings == null || viewModel.AppSettings.UserInterface == null)
                 {
-                    try
-                    {
-                        this.FontFamily = new FontFamily(fontFamily);
-                    }
-                    catch
-                    {
-                        this.FontFamily = new FontFamily("Segoe UI");
-                    }
+                    viewModel.ReloadSettings(); // Перезагрузка настроек, если они не инициализированы
                 }
 
-                // Применяем размер шрифта
-                var fontSize = Properties.Settings.Default.ApplicationFontSize;
+                var uiSettings = viewModel.AppSettings.UserInterface;
+                if (uiSettings == null)
+                {
+                    ApplyDefaultSettings();
+                    return;
+                }
+
+                ApplyFontSettings(uiSettings.FontFamily, uiSettings.FontSize);
+                ApplyWindowSettings(uiSettings);
+                UpdateStatusAfterSettingsApplied();
+                Logger.LogInfo("JSON settings applied successfully to MainWindow from default.json");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error applying JSON settings to MainWindow", ex);
+                MessageBox.Show($"Ошибка применения настроек из JSON: {ex.Message}", "Ошибка",
+                               MessageBoxButton.OK, MessageBoxImage.Error);
+                ApplyDefaultSettings();
+            }
+        }
+
+        private void UpdateStatusAfterSettingsApplied()
+        {
+            if (viewModel != null)
+            {
+                if (!string.IsNullOrEmpty(viewModel.SelectedPath))
+                {
+                    viewModel.StatusText = "Настройки из default.json применены. Последняя папка загружена из настроек.";
+                }
+                else
+                {
+                    viewModel.StatusText = "Настройки из default.json загружены успешно. Выберите папку для анализа.";
+                }
+            }
+        }
+
+        private void ApplyFontSettings(string fontFamily, double fontSize)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(fontFamily))
+                {
+                    this.FontFamily = new FontFamily(fontFamily);
+                }
                 if (fontSize > 0)
                 {
                     this.FontSize = fontSize;
                 }
-
-                // Загружаем фильтры в ViewModel
-                if (viewModel != null)
-                {
-                    viewModel.FolderFilters = Properties.Settings.Default.FolderFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(f => f.Trim()).ToList() ?? new List<string>();
-                    viewModel.FileFilters = Properties.Settings.Default.FileFilters?.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(f => f.Trim()).ToList() ?? new List<string>();
-
-                    if (viewModel.ProjectItems?.Any() == true)
-                    {
-                        // Повторный анализ с новыми фильтрами
-                        viewModel.AnalyzeCommand?.Execute(null);
-                        viewModel.StatusText = "Настройки применены. Выполнен повторный анализ с новыми фильтрами.";
-                    }
-                    else
-                    {
-                        viewModel.StatusText = "Настройки применены. Выберите папку для анализа.";
-                    }
-                }
+                Logger.LogInfo($"Font settings applied: {fontFamily}, size: {fontSize} (from default.json)");
             }
             catch (Exception ex)
             {
-                // Обрабатываем ошибки применения настроек
-                MessageBox.Show($"Ошибка применения настроек: {ex.Message}", "Ошибка",
-                               MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.LogError($"Error applying font settings: {fontFamily}, {fontSize}", ex);
+                // Удаляем резервные значения, чтобы использовать дефолт из default.json
+                this.FontFamily = !string.IsNullOrEmpty(fontFamily) ? new FontFamily(fontFamily) : new FontFamily("Segoe UI");
+                this.FontSize = fontSize > 0 ? fontSize : 10; // Используем 10 как резервное значение из default.json
+            }
+        }
 
-                // Восстанавливаем значения по умолчанию
+        private void ApplyWindowSettings(UserInterfaceSettings uiSettings)
+        {
+            try
+            {
+                if (uiSettings.WindowWidth > 0 && uiSettings.WindowHeight > 0)
+                {
+                    this.Width = uiSettings.WindowWidth;
+                    this.Height = uiSettings.WindowHeight;
+                }
+                if (Enum.TryParse<WindowState>(uiSettings.WindowState, out var windowState))
+                {
+                    this.WindowState = windowState;
+                }
+                Logger.LogInfo($"Window settings applied: {uiSettings.WindowWidth}x{uiSettings.WindowHeight}, state: {uiSettings.WindowState}");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error applying window settings", ex);
+                this.Width = 1000;
+                this.Height = 700;
+                this.WindowState = WindowState.Normal;
+            }
+        }
+
+        private void ApplyDefaultSettings()
+        {
+            try
+            {
                 this.FontFamily = new FontFamily("Segoe UI");
-                this.FontSize = 13;
+                this.FontSize = 10; // Используем значение из default.json
+                this.Width = 1000;
+                this.Height = 700;
+                this.WindowState = WindowState.Normal;
                 if (viewModel != null)
                 {
-                    viewModel.StatusText = "Настройки сброшены на значения по умолчанию из-за ошибки.";
+                    viewModel.StatusText = "Применены настройки по умолчанию из-за ошибки загрузки default.json.";
                 }
-
-                // Можно добавить логирование:
-                // Logger.LogError("Error applying settings", ex);
+                Logger.LogInfo("Default settings applied");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error applying default settings", ex);
             }
         }
 
         #endregion
 
-        /// <summary>
-        /// Освобождение ресурсов при закрытии окна
-        /// </summary>
+        #region Window State Management
+
+        private void SaveWindowState()
+        {
+            try
+            {
+                if (viewModel?.AppSettings?.UserInterface != null)
+                {
+                    var uiSettings = viewModel.AppSettings.UserInterface;
+                    if (this.WindowState != WindowState.Minimized)
+                    {
+                        uiSettings.WindowWidth = this.Width;
+                        uiSettings.WindowHeight = this.Height;
+                        uiSettings.WindowState = this.WindowState.ToString();
+                    }
+                    viewModel.SaveCurrentSettings();
+                    Logger.LogInfo("Window state saved successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error saving window state", ex);
+            }
+        }
+
+        #endregion
+
         protected override void OnClosed(EventArgs e)
         {
             try
             {
-                // Отписываемся от событий для предотвращения утечек памяти
+                SaveWindowState();
                 if (viewModel != null)
                 {
                     viewModel.ShowFolderSelectionHint -= OnShowFolderSelectionHint;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Игнорируем ошибки при очистке ресурсов
+                Logger.LogError("Error during window cleanup", ex);
             }
-
             base.OnClosed(e);
+        }
+
+        protected override void OnStateChanged(EventArgs e)
+        {
+            try
+            {
+                if (viewModel?.AppSettings?.UserInterface != null)
+                {
+                    viewModel.AppSettings.UserInterface.WindowState = this.WindowState.ToString();
+                }
+                base.OnStateChanged(e);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error handling window state change", ex);
+                base.OnStateChanged(e);
+            }
         }
     }
 }
