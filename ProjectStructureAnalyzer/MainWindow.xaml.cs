@@ -13,10 +13,17 @@ namespace ProjectStructureAnalyzer
     public partial class MainWindow : Window
     {
         private MainViewModel viewModel;
+        private const double DefaultFontSize = 10.0; // Default font size from ApplyDefaultSettings
+        private const double DefaultWindowWidth = 1000.0; // Default width from ApplyDefaultSettings
+        private const double DefaultWindowHeight = 700.0; // Default height from ApplyDefaultSettings
+        private const double ScalingCoefficient = 0.6; // Coefficient k for scaling
+        private bool isFontScaledWindowSizeApplied; // Flag to track if font-scaled size is applied
 
         public MainWindow()
         {
             InitializeComponent();
+            MinWidth = 450; // Устанавливаем минимальную ширину
+            MinHeight = 300; // Устанавливаем минимальную высоту
             viewModel = new MainViewModel();
             DataContext = viewModel;
             viewModel.ShowFolderSelectionHint += OnShowFolderSelectionHint;
@@ -206,15 +213,25 @@ namespace ProjectStructureAnalyzer
                 if (fontSize > 0)
                 {
                     this.FontSize = fontSize;
+                    // Scale window size proportionally to font size with coefficient
+                    double scaleFactor = (fontSize / DefaultFontSize) * ScalingCoefficient;
+                    this.Width = DefaultWindowWidth * scaleFactor;
+                    this.Height = DefaultWindowHeight * scaleFactor;
+                    // Ensure the window size does not go below MinWidth and MinHeight
+                    this.Width = Math.Max(this.Width, MinWidth);
+                    this.Height = Math.Max(this.Height, MinHeight);
+                    isFontScaledWindowSizeApplied = true; // Set flag to indicate font-scaled size is applied
                 }
-                Logger.LogInfo($"Font settings applied: {fontFamily}, size: {fontSize} (from default.json)");
+                Logger.LogInfo($"Font settings applied: {fontFamily}, size: {fontSize}, scaled window size: {this.Width}x{this.Height} (from default.json)");
             }
             catch (Exception ex)
             {
                 Logger.LogError($"Error applying font settings: {fontFamily}, {fontSize}", ex);
-                // Удаляем резервные значения, чтобы использовать дефолт из default.json
                 this.FontFamily = !string.IsNullOrEmpty(fontFamily) ? new FontFamily(fontFamily) : new FontFamily("Segoe UI");
-                this.FontSize = fontSize > 0 ? fontSize : 10; // Используем 10 как резервное значение из default.json
+                this.FontSize = fontSize > 0 ? fontSize : 10;
+                this.Width = DefaultWindowWidth;
+                this.Height = DefaultWindowHeight;
+                isFontScaledWindowSizeApplied = false; // Reset flag on error
             }
         }
 
@@ -222,7 +239,8 @@ namespace ProjectStructureAnalyzer
         {
             try
             {
-                if (uiSettings.WindowWidth > 0 && uiSettings.WindowHeight > 0)
+                // Only apply window size from JSON if font-scaled size hasn't been applied
+                if (!isFontScaledWindowSizeApplied && uiSettings.WindowWidth > 0 && uiSettings.WindowHeight > 0)
                 {
                     this.Width = uiSettings.WindowWidth;
                     this.Height = uiSettings.WindowHeight;
@@ -231,13 +249,13 @@ namespace ProjectStructureAnalyzer
                 {
                     this.WindowState = windowState;
                 }
-                Logger.LogInfo($"Window settings applied: {uiSettings.WindowWidth}x{uiSettings.WindowHeight}, state: {uiSettings.WindowState}");
+                Logger.LogInfo($"Window settings applied: {this.Width}x{this.Height}, state: {uiSettings.WindowState}");
             }
             catch (Exception ex)
             {
                 Logger.LogError("Error applying window settings", ex);
-                this.Width = 1000;
-                this.Height = 700;
+                this.Width = DefaultWindowWidth;
+                this.Height = DefaultWindowHeight;
                 this.WindowState = WindowState.Normal;
             }
         }
@@ -251,6 +269,7 @@ namespace ProjectStructureAnalyzer
                 this.Width = 1000;
                 this.Height = 700;
                 this.WindowState = WindowState.Normal;
+                isFontScaledWindowSizeApplied = false; // Reset flag for default settings
                 if (viewModel != null)
                 {
                     viewModel.StatusText = "Применены настройки по умолчанию из-за ошибки загрузки default.json.";
