@@ -179,6 +179,10 @@ namespace ProjectStructureAnalyzer
         private void SelectFolder()
         {
             var dialog = new FolderBrowserDialog();
+            if (!string.IsNullOrEmpty(SelectedPath) && Directory.Exists(SelectedPath))
+            {
+                dialog.SelectedPath = SelectedPath; // Pre-select the last chosen folder
+            }
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 SelectedPath = dialog.SelectedPath;

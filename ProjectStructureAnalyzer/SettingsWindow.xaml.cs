@@ -249,7 +249,7 @@ namespace ProjectStructureAnalyzer
                     var profile = CreateCurrentProfile();
                     profile.Name = "Default Settings";
 
-                    var defaultProfilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "default.json");
+                    var defaultProfilePath = Path.Combine(GetProfilesDirectory(), "default.json");
                     var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
                     File.WriteAllText(defaultProfilePath, json);
 
@@ -350,9 +350,8 @@ namespace ProjectStructureAnalyzer
 
         private string GetProfilesDirectory()
         {
-            var exePath = AppDomain.CurrentDomain.BaseDirectory;
-            var profilesDir = Path.Combine(exePath, "Settings");
-            Directory.CreateDirectory(profilesDir);
+            var profilesDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ProjectStructureAnalyzer");
+            Directory.CreateDirectory(profilesDir); // Ensure the directory exists
             return profilesDir;
         }
 

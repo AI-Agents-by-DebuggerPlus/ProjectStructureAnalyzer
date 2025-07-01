@@ -22,15 +22,6 @@ namespace ProjectStructureAnalyzer
     {
         [JsonPropertyName("lastSelectedPath")]
         public string LastSelectedPath { get; set; } = string.Empty;
-
-        [JsonPropertyName("autoSaveSettings")]
-        public bool AutoSaveSettings { get; set; } = true;
-
-        [JsonPropertyName("enableLogging")]
-        public bool EnableLogging { get; set; } = true;
-
-        [JsonPropertyName("logLevel")]
-        public string LogLevel { get; set; } = "Info";
     }
 
     public class FilterSettings
@@ -73,12 +64,16 @@ namespace ProjectStructureAnalyzer
     {
         private readonly string defaultSettingsPath;
         private readonly string userSettingsPath;
+        private readonly string settingsDirectory;
         private AppSettings currentSettings;
 
-        public JsonSettingsManager(string defaultPath = "default.json", string userPath = "user_settings.json")
+        public JsonSettingsManager(string defaultPath = "default.json", string userPath = "app_settings.json")
         {
-            defaultSettingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, defaultPath); // Путь к .exe
-            userSettingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, userPath);     // Путь к .exe
+            settingsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ProjectStructureAnalyzer");
+            Directory.CreateDirectory(settingsDirectory); // Ensure the directory exists
+
+            defaultSettingsPath = Path.Combine(settingsDirectory, defaultPath);
+            userSettingsPath = Path.Combine(settingsDirectory, userPath);
             currentSettings = new AppSettings();
         }
 
@@ -88,8 +83,8 @@ namespace ProjectStructureAnalyzer
         {
             try
             {
-                LoadDefaultSettings(); // Всегда загружаем default.json как базовые настройки
-                LoadUserSettings();   // Переопределяем только если user_settings.json существует
+                LoadDefaultSettings(); // Load default.json for filter and UI settings
+                LoadUserSettings();    // Override LastSelectedPath with app_settings.json if it exists
                 Logger.LogInfo("Settings loaded successfully");
             }
             catch (Exception ex)
@@ -129,11 +124,12 @@ namespace ProjectStructureAnalyzer
                         PropertyNameCaseInsensitive = true
                     };
 
-                    var userSettings = JsonSerializer.Deserialize<AppSettings>(jsonContent, options);
-                    if (userSettings != null)
+                    var userSettings = JsonSerializer.Deserialize<Dictionary<string, ApplicationSettings>>(jsonContent, options);
+                    if (userSettings != null && userSettings.TryGetValue("applicationSettings", out var appSettings))
                     {
-                        MergeSettings(userSettings);
-                        Logger.LogInfo($"User settings loaded from: {userSettingsPath}");
+                        if (!string.IsNullOrEmpty(appSettings.LastSelectedPath))
+                            currentSettings.ApplicationSettings.LastSelectedPath = appSettings.LastSelectedPath;
+                        Logger.LogInfo($"User settings (LastSelectedPath) loaded from: {userSettingsPath}");
                     }
                 }
                 catch (Exception ex)
@@ -147,15 +143,22 @@ namespace ProjectStructureAnalyzer
         {
             try
             {
+                var userSettings = new
+                {
+                    applicationSettings = new
+                    {
+                        lastSelectedPath = currentSettings.ApplicationSettings.LastSelectedPath
+                    }
+                };
                 var options = new JsonSerializerOptions
                 {
                     WriteIndented = true,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 };
 
-                var jsonContent = JsonSerializer.Serialize(currentSettings, options);
+                var jsonContent = JsonSerializer.Serialize(userSettings, options);
                 File.WriteAllText(userSettingsPath, jsonContent);
-                Logger.LogInfo($"User settings saved to: {userSettingsPath}");
+                Logger.LogInfo($"User settings (LastSelectedPath) saved to: {userSettingsPath}");
             }
             catch (Exception ex)
             {
@@ -196,10 +199,7 @@ namespace ProjectStructureAnalyzer
             {
                 ApplicationSettings = new ApplicationSettings
                 {
-                    LastSelectedPath = string.Empty,
-                    AutoSaveSettings = true,
-                    EnableLogging = true,
-                    LogLevel = "Info"
+                    LastSelectedPath = string.Empty
                 },
                 FilterSettings = new FilterSettings
                 {
@@ -222,51 +222,18 @@ namespace ProjectStructureAnalyzer
 
         private void MergeSettings(AppSettings userSettings)
         {
-            if (userSettings.ApplicationSettings != null)
+            if (userSettings.ApplicationSettings != null && !string.IsNullOrEmpty(userSettings.ApplicationSettings.LastSelectedPath))
             {
-                if (!string.IsNullOrEmpty(userSettings.ApplicationSettings.LastSelectedPath))
-                    currentSettings.ApplicationSettings.LastSelectedPath = userSettings.ApplicationSettings.LastSelectedPath;
-                currentSettings.ApplicationSettings.AutoSaveSettings = userSettings.ApplicationSettings.AutoSaveSettings;
-                currentSettings.ApplicationSettings.EnableLogging = userSettings.ApplicationSettings.EnableLogging;
-                if (!string.IsNullOrEmpty(userSettings.ApplicationSettings.LogLevel))
-                    currentSettings.ApplicationSettings.LogLevel = userSettings.ApplicationSettings.LogLevel;
+                currentSettings.ApplicationSettings.LastSelectedPath = userSettings.ApplicationSettings.LastSelectedPath;
             }
-
-            if (userSettings.FilterSettings != null)
-            {
-                if (userSettings.FilterSettings.FolderFilters?.Count > 0)
-                    currentSettings.FilterSettings.FolderFilters = userSettings.FilterSettings.FolderFilters;
-                if (userSettings.FilterSettings.FileFilters?.Count > 0)
-                    currentSettings.FilterSettings.FileFilters = userSettings.FilterSettings.FileFilters;
-                currentSettings.FilterSettings.EnableFolderFilters = userSettings.FilterSettings.EnableFolderFilters;
-                currentSettings.FilterSettings.EnableFileFilters = userSettings.FilterSettings.EnableFileFilters;
-            }
-
-            if (userSettings.UserInterface != null)
-            {
-                if (!string.IsNullOrEmpty(userSettings.UserInterface.FontFamily))
-                    currentSettings.UserInterface.FontFamily = userSettings.UserInterface.FontFamily;
-                if (userSettings.UserInterface.FontSize > 0)
-                    currentSettings.UserInterface.FontSize = userSettings.UserInterface.FontSize;
-                if (!string.IsNullOrEmpty(userSettings.UserInterface.Theme))
-                    currentSettings.UserInterface.Theme = userSettings.UserInterface.Theme;
-                if (userSettings.UserInterface.WindowWidth > 0)
-                    currentSettings.UserInterface.WindowWidth = userSettings.UserInterface.WindowWidth;
-                if (userSettings.UserInterface.WindowHeight > 0)
-                    currentSettings.UserInterface.WindowHeight = userSettings.UserInterface.WindowHeight;
-                if (!string.IsNullOrEmpty(userSettings.UserInterface.WindowState))
-                    currentSettings.UserInterface.WindowState = userSettings.UserInterface.WindowState;
-            }
+            // FilterSettings and UserInterfaceSettings are not merged from user settings
         }
 
         public void UpdateFilterSettings(List<string> folderFilters, List<string> fileFilters)
         {
             currentSettings.FilterSettings.FolderFilters = folderFilters ?? new List<string>();
             currentSettings.FilterSettings.FileFilters = fileFilters ?? new List<string>();
-            if (currentSettings.ApplicationSettings.AutoSaveSettings)
-            {
-                SaveUserSettings();
-            }
+            // Do not save to app_settings.json, as filter settings are not stored there
         }
 
         public void UpdateInterfaceSettings(string fontFamily, double fontSize)
@@ -275,19 +242,13 @@ namespace ProjectStructureAnalyzer
                 currentSettings.UserInterface.FontFamily = fontFamily;
             if (fontSize > 0)
                 currentSettings.UserInterface.FontSize = fontSize;
-            if (currentSettings.ApplicationSettings.AutoSaveSettings)
-            {
-                SaveUserSettings();
-            }
+            // Do not save to app_settings.json, as UI settings are not stored there
         }
 
         public void UpdateLastSelectedPath(string path)
         {
             currentSettings.ApplicationSettings.LastSelectedPath = path ?? string.Empty;
-            if (currentSettings.ApplicationSettings.AutoSaveSettings)
-            {
-                SaveUserSettings();
-            }
+            SaveUserSettings(); // Save only LastSelectedPath to app_settings.json
         }
     }
 }
