@@ -69,6 +69,18 @@
                     <TextBlock Text="Сергей Делеу" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
                 </StackPanel>
 
+                <!-- Ссылка на репозиторий -->
+                <TextBlock Grid.Row="3" 
+                           HorizontalAlignment="Center" 
+                           Margin="0,0,0,20">
+                    <Hyperlink NavigateUri="https://github.com/AI-Agents-by-DebuggerPlus/ProjectStructureAnalyzer.git" 
+                               Foreground="{DynamicResource AccentBrush}" 
+                               TextDecorations="Underline" 
+                               RequestNavigate="Hyperlink_Click">
+                        Перейти в GitHub-репозиторий
+                    </Hyperlink>
+                </TextBlock>
+
                 <!-- Ссылка на Discord -->
                 <Border Grid.Row="4" 
                         Background="{DynamicResource AccentBrush}" 

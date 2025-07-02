@@ -1,8 +1,8 @@
-﻿// Views/AboutWindow.xaml.cs
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Navigation;
 
 namespace ProjectStructureAnalyzer.Views
 {
@@ -13,37 +13,47 @@ namespace ProjectStructureAnalyzer.Views
             InitializeComponent();
         }
 
+        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                DragMove();
+        }
+
+        private void Close_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
         private void DiscordButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://discord.gg/VET58PT6dJ",
+                    FileName = "https://discord.com/channels/@me", // Replace with actual Discord channel URL
                     UseShellExecute = true
                 });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Не удалось открыть ссылку: {ex.Message}",
-                              "Ошибка",
-                              MessageBoxButton.OK,
-                              MessageBoxImage.Warning);
+                MessageBox.Show($"Ошибка при открытии Discord: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-
-
-        private void Close_Click(object sender, RoutedEventArgs e)
+        private void Hyperlink_Click(object sender, RequestNavigateEventArgs e)
         {
-            this.Close();
-        }
-
-        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.LeftButton == MouseButtonState.Pressed)
+            try
             {
-                this.DragMove();
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = e.Uri.ToString(),
+                    UseShellExecute = true
+                });
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при открытии ссылки: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
