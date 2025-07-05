@@ -57,7 +57,7 @@
 
                 <!-- Описание -->
                 <TextBlock Grid.Row="1" 
-                           Text="Анализатор структуры проектов для разработчиков"
+                           Text="Анализатор структуры проектов для вайбкодеров"
                            FontSize="16"
                            Foreground="{DynamicResource TextBrush}"
                            HorizontalAlignment="Center"
@@ -89,7 +89,7 @@
                         VerticalAlignment="Bottom"
                         Margin="0,20,0,0">
                     <StackPanel>
-                        <TextBlock Text="💬 Присоединяйся к сообществу индихакеров!" 
+                        <TextBlock Text="💬 Присоединяйся к сообществу вайбкодеров!" 
                                    FontWeight="Bold" 
                                    Foreground="White"
                                    HorizontalAlignment="Center"
